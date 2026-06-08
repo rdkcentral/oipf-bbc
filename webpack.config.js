@@ -39,7 +39,7 @@ module.exports = function(env, argv) {
         module: {
             rules: [
                 {
-                    test: /.js/,
+                    test: /\.js$/,
                     enforce: 'pre',
                     exclude: /node_modules/,
                     use: [
