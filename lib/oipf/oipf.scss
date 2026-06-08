@@ -1,0 +1,3 @@
+object[type="video/broadcast"], object[type="application/oipfApplicationManager"], object[type="application/oipfConfiguration"]{
+	visibility:hidden !important;	//we need to prevent the browser drawing the 'Object not supported' graphic
+}
