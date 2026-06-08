@@ -3,7 +3,6 @@ const smp = new SpeedMeasurePlugin({
     disable: true  //set to false to see the time taken for each part of the webpack build in the console output
 });
 
-const merge = require('webpack-merge');
 const path = require('path');
 const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
