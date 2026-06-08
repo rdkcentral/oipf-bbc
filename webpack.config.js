@@ -27,14 +27,12 @@ module.exports = function(env, argv) {
         entry: {
             'oipf-bbc': './lib/oipf/bbcOipfAndOsdk.js'
         },
-        output: {
-            // as no library property is provided this will add all properties of the entry point to the window object
-            libraryTarget: 'window'
-        },
         resolve: {
             modules: [path.resolve(__dirname, 'lib')] //this makes the root of module includes the ./lib directory
         },
         output: {
+            // as no library property is provided this will add all properties of the entry point to the window object
+            libraryTarget: 'window',
             filename: '[name].js',
             path: distributionDirPath + '/stb',
         },
