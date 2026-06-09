@@ -108,9 +108,7 @@ module.exports = function(env, argv) {
                 fileName: 'commits.txt',
                 content: JSON.stringify(process.env.npm_package_name + " (" + process.env.npm_package_version + ") built from hash " + gitRevisionPlugin.commithash() + " branch " + gitRevisionPlugin.branch())
             }),
-            new ESLintPlugin({
-                exclude: './lib/util/sjcl.js'
-            }),
+            new ESLintPlugin(),
             // Uncomment to get a html page showing modules in bundle and their size visually
             /*
             new BundleAnalyzerPlugin({
