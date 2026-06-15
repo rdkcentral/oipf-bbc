@@ -1,7 +1,7 @@
 {
     "name": "oipf-bbc",
     "version": "1.0.0",
-    "description": "Libraries needed for apps development on Liberty Global RDK2",
+    "description": "Libraries needed for OIPF interface on RDK",
     "scripts": {
         "build": "run-s clean build:lib:prod",
         "watch": "webpack --mode=development --watch",
@@ -11,8 +11,8 @@
         "zip": "node scripts/zip-dist.js",
         "test": "NODE_PATH=./lib mocha"
     },
-    "author": "Liberty Global",
-    "license": "ISC",
+    "author": "Infosys",
+    "license": "Apache-2.0",
     "devDependencies": {
         "@babel/core": "^7.29.7",
         "@babel/eslint-parser": "7.19.1",
