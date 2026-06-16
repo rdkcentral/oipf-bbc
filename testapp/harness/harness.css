@@ -90,21 +90,69 @@ body {
 
 #results {
     flex: 1 1 auto;
+    min-height: 0;
     padding: 24px 32px;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 }
 
+/* Fixed header above the scrolling viewport. */
 #resultsTitle {
+    flex: 0 0 auto;
     margin: 0 0 24px;
+    padding-bottom: 4px;
     font-size: 30px;
     display: inline-block;
+    align-self: flex-start;
     border-bottom: 4px solid transparent;
-    padding-bottom: 4px;
 }
 
 /* When the results pane holds true focus, underline its title. */
 #resultsTitle.focused {
     border-bottom-color: #2563eb;
+}
+
+/* Scrolling viewport: holds the rows and the edge indicators. */
+#resultsViewport {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+#resultsScroll {
+    height: 100%;
+    overflow-y: auto;
+}
+
+/* "More above / below" indicators, anchored to the viewport edges and faded in
+   only when there is off-screen content in that direction. */
+.scrollHint {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #cfd6df;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.scrollHint.visible {
+    opacity: 1;
+}
+
+#scrollUp {
+    top: 0;
+    background: linear-gradient(to bottom, #11151c 30%, rgba(17, 21, 28, 0));
+}
+
+#scrollDown {
+    bottom: 0;
+    background: linear-gradient(to top, #11151c 30%, rgba(17, 21, 28, 0));
 }
 
 .caseRow {

@@ -161,9 +161,35 @@ window.harness = (function () {
             }
             rows[i].className = cls;
         }
-        if (pane === 'results' && rows[resultIndex] && rows[resultIndex].scrollIntoView) {
-            rows[resultIndex].scrollIntoView({ block: 'nearest' });
+        var scroller = document.getElementById('resultsScroll');
+        var row = rows[resultIndex];
+        if (pane === 'results' && row && scroller) {
+            // Snap to the true extremes for the first/last rows so the viewport
+            // can actually reach top/bottom (a tall last row aligned 'nearest'
+            // would leave content — and the "more below" hint — stuck on screen);
+            // intermediate rows just scroll the minimum needed.
+            if (resultIndex === 0) {
+                scroller.scrollTop = 0;
+            } else if (resultIndex === rows.length - 1) {
+                scroller.scrollTop = scroller.scrollHeight;
+            } else if (row.scrollIntoView) {
+                row.scrollIntoView({ block: 'nearest' });
+            }
         }
+        updateScrollHints();
+    }
+
+    // Fades in the up/down indicators when there is off-screen content in the
+    // results viewport. Cheap enough to call on every scroll, focus or settle.
+    function updateScrollHints() {
+        var scroller = document.getElementById('resultsScroll');
+        if (!scroller) {
+            return;
+        }
+        var atTop = scroller.scrollTop <= 0;
+        var atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
+        document.getElementById('scrollUp').classList.toggle('visible', !atTop);
+        document.getElementById('scrollDown').classList.toggle('visible', !atBottom);
     }
 
     function renderCase(name) {
@@ -201,6 +227,7 @@ window.harness = (function () {
                     data.textContent = text;
                     data.style.display = 'block';
                 }
+                updateScrollHints();
             }
         };
     }
@@ -317,6 +344,8 @@ window.harness = (function () {
         captureConsole();
         buildMenu();
         document.addEventListener('keydown', onKeyDown);
+        document.getElementById('resultsScroll').addEventListener('scroll', updateScrollHints);
+        window.addEventListener('resize', updateScrollHints);
 
         var version = '?';
         try {
