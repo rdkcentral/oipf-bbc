@@ -9,7 +9,8 @@
         "build:lib:prod": "webpack --mode=production",
         "build:lib:dev": "webpack --mode=development",
         "zip": "node scripts/zip-dist.js",
-        "test": "NODE_PATH=./lib mocha"
+        "test": "NODE_PATH=./lib mocha",
+        "serve:testapp": "node scripts/serve-testapp.js"
     },
     "author": "Infosys",
     "license": "Apache-2.0",
