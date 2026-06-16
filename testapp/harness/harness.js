@@ -227,18 +227,60 @@ window.harness = (function () {
 
         document.getElementById('resultsList').appendChild(row);
 
+        function setBadge(cls, text) {
+            badge.className = 'badge ' + cls;
+            badge.textContent = text;
+        }
+
+        function showData(text) {
+            if (text !== undefined && text !== 'undefined' && text !== '') {
+                data.textContent = text;
+                data.style.display = 'block';
+            }
+            updateResultHints();
+        }
+
         return {
+            row: row,
+            markRunning: function () {
+                setBadge('running', 'RUN');
+            },
             settle: function (ok, value) {
-                badge.className = 'badge ' + (ok ? 'pass' : 'fail');
-                badge.textContent = ok ? 'PASS' : 'FAIL';
-                var text = pretty(value);
-                if (text !== undefined && text !== 'undefined' && text !== '') {
-                    data.textContent = text;
-                    data.style.display = 'block';
-                }
-                updateResultHints();
+                setBadge(ok ? 'pass' : 'fail', ok ? 'PASS' : 'FAIL');
+                showData(pretty(value));
+            },
+            // Arms a manual case: it does NOT run on group selection. The runner
+            // fires only on explicit activation (OK/click), once. Used for
+            // destructive actions (e.g. launching/closing the app).
+            arm: function (runner) {
+                setBadge('manual', 'MANUAL');
+                showData('Manual test — press OK or click to run (this may exit the app).');
+                row.__armed = runner;
+                row.addEventListener('click', function () {
+                    if (row.__armed) {
+                        var fire = row.__armed;
+                        row.__armed = null;
+                        fire();
+                    }
+                });
             }
         };
+    }
+
+    function executeCase(testCase, view, ctx) {
+        view.markRunning();
+        try {
+            Promise.resolve(testCase.run(ctx)).then(
+                function (value) {
+                    view.settle(true, value);
+                },
+                function (err) {
+                    view.settle(false, err);
+                }
+            );
+        } catch (err) {
+            view.settle(false, err);
+        }
     }
 
     function runGroup(id) {
@@ -269,17 +311,13 @@ window.harness = (function () {
 
         (group.cases || []).forEach(function (testCase) {
             var view = renderCase(testCase.name);
-            try {
-                Promise.resolve(testCase.run(ctx)).then(
-                    function (value) {
-                        view.settle(true, value);
-                    },
-                    function (err) {
-                        view.settle(false, err);
-                    }
-                );
-            } catch (err) {
-                view.settle(false, err);
+            if (testCase.manual) {
+                // Don't auto-run; wait for explicit activation (see executeCase).
+                view.arm(function () {
+                    executeCase(testCase, view, ctx);
+                });
+            } else {
+                executeCase(testCase, view, ctx);
             }
         });
 
@@ -324,8 +362,14 @@ window.harness = (function () {
             resultIndex = Math.max(resultIndex - 1, 0);
             syncResultFocus();
         } else if (action === 'select' || action === 'right') {
-            // Scroll into this result if its data overflows.
-            if (dataIsScrollable(focusedResultData())) {
+            var focusedRow = document.querySelectorAll('.caseRow')[resultIndex];
+            if (focusedRow && focusedRow.__armed) {
+                // Activate a manual (armed) case, once.
+                var fire = focusedRow.__armed;
+                focusedRow.__armed = null;
+                fire();
+            } else if (dataIsScrollable(focusedResultData())) {
+                // Otherwise scroll into this result if its data overflows.
                 inResult = true;
                 syncResultFocus();
             }

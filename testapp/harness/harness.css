@@ -235,6 +235,12 @@ body {
     color: #ffffff;
 }
 
+/* Manual case: not run automatically; awaits explicit OK/click activation. */
+.badge.manual {
+    background: #7c3aed;
+    color: #ffffff;
+}
+
 .caseName {
     font-size: 24px;
 }
