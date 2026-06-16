@@ -104,7 +104,7 @@ window.harness = (function () {
     }
 
     function buildMenu() {
-        var menu = document.getElementById('menu');
+        var menu = document.getElementById('menuScroll');
         menu.innerHTML = '';
         groupIds = Object.keys(tests);
         groupIds.forEach(function (id, i) {
@@ -138,6 +138,7 @@ window.harness = (function () {
         if (focused && focused.scrollIntoView) {
             focused.scrollIntoView({ block: 'nearest' });
         }
+        updateMenuHints();
     }
 
     function focusedResultData() {
@@ -176,20 +177,28 @@ window.harness = (function () {
                 row.scrollIntoView({ block: 'nearest' });
             }
         }
-        updateScrollHints();
+        updateResultHints();
     }
 
-    // Fades in the up/down indicators when there is off-screen content in the
-    // results viewport. Cheap enough to call on every scroll, focus or settle.
-    function updateScrollHints() {
-        var scroller = document.getElementById('resultsScroll');
+    // Fades in the up/down indicators when a scroll container has off-screen
+    // content in that direction. Cheap enough to call on every scroll or focus.
+    function updateScrollHints(scrollerId, upId, downId) {
+        var scroller = document.getElementById(scrollerId);
         if (!scroller) {
             return;
         }
         var atTop = scroller.scrollTop <= 0;
         var atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
-        document.getElementById('scrollUp').classList.toggle('visible', !atTop);
-        document.getElementById('scrollDown').classList.toggle('visible', !atBottom);
+        document.getElementById(upId).classList.toggle('visible', !atTop);
+        document.getElementById(downId).classList.toggle('visible', !atBottom);
+    }
+
+    function updateResultHints() {
+        updateScrollHints('resultsScroll', 'scrollUp', 'scrollDown');
+    }
+
+    function updateMenuHints() {
+        updateScrollHints('menuScroll', 'menuScrollUp', 'menuScrollDown');
     }
 
     function renderCase(name) {
@@ -227,7 +236,7 @@ window.harness = (function () {
                     data.textContent = text;
                     data.style.display = 'block';
                 }
-                updateScrollHints();
+                updateResultHints();
             }
         };
     }
@@ -244,10 +253,24 @@ window.harness = (function () {
         document.getElementById('resultsTitle').textContent = group.label || id;
         document.getElementById('resultsList').innerHTML = '';
 
+        // Optional setup() runs once and yields a context passed to every case.
+        // A thrown setup is fatal for the group (one error row, cases skipped);
+        // a null/return value is handed to the cases to handle themselves.
+        var ctx;
+        if (typeof group.setup === 'function') {
+            try {
+                ctx = group.setup();
+            } catch (err) {
+                renderCase('setup').settle(false, err);
+                syncResultFocus();
+                return;
+            }
+        }
+
         (group.cases || []).forEach(function (testCase) {
             var view = renderCase(testCase.name);
             try {
-                Promise.resolve(testCase.run()).then(
+                Promise.resolve(testCase.run(ctx)).then(
                     function (value) {
                         view.settle(true, value);
                     },
@@ -344,8 +367,12 @@ window.harness = (function () {
         captureConsole();
         buildMenu();
         document.addEventListener('keydown', onKeyDown);
-        document.getElementById('resultsScroll').addEventListener('scroll', updateScrollHints);
-        window.addEventListener('resize', updateScrollHints);
+        document.getElementById('resultsScroll').addEventListener('scroll', updateResultHints);
+        document.getElementById('menuScroll').addEventListener('scroll', updateMenuHints);
+        window.addEventListener('resize', function () {
+            updateResultHints();
+            updateMenuHints();
+        });
 
         var version = '?';
         try {

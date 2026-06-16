@@ -14,25 +14,43 @@
  * limitations under the License.
  */
 
-/* Tests for bbc.oipfConfiguration. */
-harness.tests.configuration = {
-    label: 'Configuration',
-    cases: [
-        {
-            name: 'bbc.oipfConfiguration exists',
-            run: function () {
-                if (!bbc || !bbc.oipfConfiguration) {
-                    throw new Error('bbc.oipfConfiguration is not available');
-                }
-                return Object.keys(bbc.oipfConfiguration);
-            }
+/*
+ * Configuration feature, exercised via bbc / factory / DOM. The common member
+ * across all three access types is the `configuration` property.
+ */
+(function () {
+    harness.registerOipfFeature({
+        key: 'configuration',
+        label: 'Configuration',
+        accessors: {
+            bbc: function () {
+                return bbc.oipfConfiguration;
+            },
+            factory: function () {
+                return oipfObjectFactory.createConfigurationObject();
+            },
+            dom: harness.domObjectAccessor('application/oipfConfiguration', 'ta-configuration')
         },
-        {
-            name: 'bbc.oipfConfiguration.configuration',
-            run: function () {
-                // Populated asynchronously from Firebolt during init; read current snapshot.
-                return bbc.oipfConfiguration.configuration;
+        cases: [
+            {
+                name: 'exposes the configuration property',
+                run: function (cfg) {
+                    if (!cfg) {
+                        throw new Error('object not available (accessor returned null)');
+                    }
+                    if (!('configuration' in cfg)) {
+                        throw new Error('missing property: configuration');
+                    }
+                    return 'configuration property present';
+                }
+            },
+            {
+                name: 'configuration (snapshot)',
+                run: function (cfg) {
+                    // Populated asynchronously from Firebolt during init; read current snapshot.
+                    return cfg.configuration;
+                }
             }
-        }
-    ]
-};
+        ]
+    });
+})();

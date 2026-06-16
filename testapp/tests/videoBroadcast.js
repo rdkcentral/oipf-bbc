@@ -15,56 +15,77 @@
  */
 
 /*
- * Tests for bbc.videoBroadcast — the core broadcast/tuning flow.
+ * VideoBroadcast feature, exercised via bbc / factory / DOM. The cases below are
+ * shared across all three access types; each receives the resolved object (vb).
  *
- * On a real STB these talk to Firebolt and tune the tuner. Off-STB (no Firebolt
- * service at ws://127.0.0.1:9998) the promise-based cases render a clean FAIL
- * with the OipfError, which exercises the harness error rendering.
+ * On a real STB these talk to Firebolt and tune the tuner. Off-STB the factory
+ * and DOM accessors fail to instantiate (rendered as a setup error), while the
+ * bbc facade resolves but its Firebolt-backed calls reject (rendered per case).
  */
 (function () {
-    var vb = function () {
-        return bbc.videoBroadcast;
-    };
+    var METHODS = ['getChannelConfig', 'bindToCurrentChannel', 'setChannel', 'getComponents', 'selectComponent', 'stop'];
 
-    harness.tests.videoBroadcast = {
+    harness.registerOipfFeature({
+        key: 'videoBroadcast',
         label: 'Video Broadcast',
+        accessors: {
+            bbc: function () {
+                return bbc.videoBroadcast;
+            },
+            factory: function () {
+                return oipfObjectFactory.createVideoBroadcastObject();
+            },
+            dom: harness.domObjectAccessor('video/broadcast', 'ta-video-broadcast')
+        },
         cases: [
             {
+                name: 'exposes the VideoBroadcast API',
+                run: function (vb) {
+                    if (!vb) {
+                        throw new Error('object not available (accessor returned null)');
+                    }
+                    var missing = METHODS.filter(function (m) {
+                        return typeof vb[m] !== 'function';
+                    });
+                    if (missing.length) {
+                        throw new Error('missing methods: ' + missing.join(', '));
+                    }
+                    return 'all expected methods present';
+                }
+            },
+            {
                 name: 'getChannelConfig()',
-                run: function () {
-                    return Promise.resolve(vb().getChannelConfig());
+                run: function (vb) {
+                    return Promise.resolve(vb.getChannelConfig());
                 }
             },
             {
                 name: 'currentChannel (getter)',
-                run: function () {
-                    return vb().currentChannel;
+                run: function (vb) {
+                    return vb.currentChannel;
                 }
             },
             {
                 name: 'playState (getter)',
-                run: function () {
-                    return { playState: vb().playState };
+                run: function (vb) {
+                    return { playState: vb.playState };
                 }
             },
             {
                 name: 'getComponents()',
-                run: function () {
-                    return Promise.resolve(vb().getComponents());
+                run: function (vb) {
+                    return Promise.resolve(vb.getComponents());
                 }
             },
             {
                 name: 'PlayStateChange listener (logs to Log pane)',
-                run: function () {
-                    var obj = document.createElement('object');
-                    obj.type = 'video/broadcast';
-                    obj.id = 'ta-vb-events';
-                    document.body.appendChild(obj);
-                    var el = document.getElementById('ta-vb-events');
-                    if (!el || typeof el.addEventListener !== 'function') {
-                        throw new Error('VideoBroadcast object does not support addEventListener');
+                run: function (vb) {
+                    // The bbc facade is not an EventTarget; events come from the
+                    // underlying DOM/factory object only.
+                    if (typeof vb.addEventListener !== 'function') {
+                        return 'no EventTarget interface on this access type (expected for the bbc facade)';
                     }
-                    el.addEventListener('PlayStateChange', function (e) {
+                    vb.addEventListener('PlayStateChange', function (e) {
                         harness.log('PlayStateChange -> state=' + (e && e.state));
                     });
                     return 'Listener attached; PlayStateChange events will appear in the Log pane.';
@@ -72,18 +93,17 @@
             },
             {
                 name: 'Tune flow: bind -> read state -> stop',
-                run: function () {
-                    var b = vb();
-                    return Promise.resolve(b.bindToCurrentChannel())
+                run: function (vb) {
+                    return Promise.resolve(vb.bindToCurrentChannel())
                         .then(function () {
-                            harness.log('bindToCurrentChannel resolved; playState=' + b.playState);
-                            return Promise.resolve(b.stop());
+                            harness.log('bindToCurrentChannel resolved; playState=' + vb.playState);
+                            return Promise.resolve(vb.stop());
                         })
                         .then(function () {
-                            return { currentChannel: b.currentChannel, playState: b.playState };
+                            return { currentChannel: vb.currentChannel, playState: vb.playState };
                         });
                 }
             }
         ]
-    };
+    });
 })();

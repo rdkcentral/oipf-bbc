@@ -14,28 +14,46 @@
  * limitations under the License.
  */
 
-/* Tests for bbc.oipfApplicationManager. */
-harness.tests.applicationManager = {
-    label: 'Application Manager',
-    cases: [
-        {
-            name: 'bbc.oipfApplicationManager exists',
-            run: function () {
-                if (!bbc || !bbc.oipfApplicationManager) {
-                    throw new Error('bbc.oipfApplicationManager is not available');
-                }
-                return Object.keys(bbc.oipfApplicationManager);
-            }
+/*
+ * ApplicationManager feature, exercised via bbc / factory / DOM. The common
+ * member across all three access types is getOwnerApplication().
+ */
+(function () {
+    harness.registerOipfFeature({
+        key: 'applicationManager',
+        label: 'Application Manager',
+        accessors: {
+            bbc: function () {
+                return bbc.oipfApplicationManager;
+            },
+            factory: function () {
+                return oipfObjectFactory.createApplicationManagerObject();
+            },
+            dom: harness.domObjectAccessor('application/oipfApplicationManager', 'ta-app-manager')
         },
-        {
-            name: 'getOwnerApplication()',
-            run: function () {
-                var app = bbc.oipfApplicationManager.getOwnerApplication();
-                if (!app) {
-                    throw new Error('getOwnerApplication() returned a falsy value');
+        cases: [
+            {
+                name: 'exposes getOwnerApplication()',
+                run: function (am) {
+                    if (!am) {
+                        throw new Error('object not available (accessor returned null)');
+                    }
+                    if (typeof am.getOwnerApplication !== 'function') {
+                        throw new Error('missing method: getOwnerApplication');
+                    }
+                    return 'getOwnerApplication present';
                 }
-                return { type: typeof app, keys: Object.keys(app) };
+            },
+            {
+                name: 'getOwnerApplication()',
+                run: function (am) {
+                    var app = am.getOwnerApplication();
+                    if (!app) {
+                        throw new Error('getOwnerApplication() returned a falsy value');
+                    }
+                    return { type: typeof app, keys: Object.keys(app) };
+                }
             }
-        }
-    ]
-};
+        ]
+    });
+})();

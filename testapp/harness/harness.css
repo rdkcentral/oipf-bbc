@@ -59,12 +59,35 @@ body {
 }
 
 #menu {
+    position: relative;
     width: 440px;
     flex: 0 0 440px;
     background: #161b23;
     border-right: 2px solid #2c3440;
-    overflow-y: auto;
     outline: none;
+}
+
+#menuScroll {
+    height: 100%;
+    overflow-y: auto;
+    /* Hide the scrollbar — the up/down hints convey off-screen content instead. */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* legacy Edge/IE */
+}
+
+#menuScroll::-webkit-scrollbar {
+    display: none; /* WebKit (STB browsers) */
+}
+
+/* Menu hints fade over the menu's own background. */
+#menuScrollUp {
+    top: 0;
+    background: linear-gradient(to bottom, #161b23 30%, rgba(22, 27, 35, 0));
+}
+
+#menuScrollDown {
+    bottom: 0;
+    background: linear-gradient(to top, #161b23 30%, rgba(22, 27, 35, 0));
 }
 
 .menuItem {
@@ -122,6 +145,13 @@ body {
 #resultsScroll {
     height: 100%;
     overflow-y: auto;
+    /* Hide the scrollbar — the up/down hints convey off-screen content instead. */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* legacy Edge/IE */
+}
+
+#resultsScroll::-webkit-scrollbar {
+    display: none; /* WebKit (STB browsers) */
 }
 
 /* "More above / below" indicators, anchored to the viewport edges and faded in

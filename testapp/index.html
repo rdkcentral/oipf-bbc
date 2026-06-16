@@ -28,7 +28,11 @@
         </header>
 
         <main id="appBody">
-            <nav id="menu" tabindex="0"></nav>
+            <nav id="menu" tabindex="0">
+                <div id="menuScroll"></div>
+                <div id="menuScrollUp" class="scrollHint" aria-hidden="true">&#9650;</div>
+                <div id="menuScrollDown" class="scrollHint" aria-hidden="true">&#9660;</div>
+            </nav>
             <section id="results">
                 <h2 id="resultsTitle">Select a test group</h2>
                 <div id="resultsViewport">
@@ -53,7 +57,7 @@
             the loader source for the two supported environments.
         -->
         <script src="harness/harness.js"></script>
-        <script src="tests/objectFactory.js"></script>
+        <script src="tests/accessors.js"></script>
         <script src="tests/displayInfo.js"></script>
         <script src="tests/configuration.js"></script>
         <script src="tests/applicationManager.js"></script>
