@@ -78,6 +78,16 @@ body {
     color: #ffffff;
 }
 
+/* When the results pane holds true focus, the menu shows a "ghosted" marker on
+   the item that will regain focus — visibly not the active pane. */
+.menuItem.focused.ghosted {
+    background: transparent;
+    color: #e6e9ef;
+    box-shadow: inset 4px 0 0 #2563eb;
+    outline: 1px dashed #3b6fe0;
+    outline-offset: -1px;
+}
+
 #results {
     flex: 1 1 auto;
     padding: 24px 32px;
@@ -87,6 +97,14 @@ body {
 #resultsTitle {
     margin: 0 0 24px;
     font-size: 30px;
+    display: inline-block;
+    border-bottom: 4px solid transparent;
+    padding-bottom: 4px;
+}
+
+/* When the results pane holds true focus, underline its title. */
+#resultsTitle.focused {
+    border-bottom-color: #2563eb;
 }
 
 .caseRow {
@@ -95,6 +113,18 @@ body {
     background: #161b23;
     border: 1px solid #2c3440;
     border-radius: 6px;
+}
+
+/* Focused result row (Up/Down navigates rows while the results pane is active). */
+.caseRow.focused {
+    border-color: #2563eb;
+    box-shadow: inset 4px 0 0 #2563eb;
+}
+
+/* While scrolling inside a result, highlight its data block as the active target. */
+.caseRow.scrolling .caseData {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
 }
 
 .caseHead {

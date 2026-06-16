@@ -31,6 +31,10 @@ window.harness = (function () {
     var focusIndex = 0;
     var pane = 'menu'; // 'menu' | 'results'
 
+    var resultIndex = 0; // focused case row while pane === 'results'
+    var inResult = false; // true while scrolling within the focused result's data
+    var DATA_SCROLL_STEP_PX = 60;
+
     // ---- on-screen log (mirrors console) --------------------------------
 
     function appendLog(text, isError) {
@@ -110,21 +114,55 @@ window.harness = (function () {
             item.setAttribute('data-index', String(i));
             item.addEventListener('click', function () {
                 focusIndex = i;
-                refreshFocus();
+                syncMenuFocus();
                 runGroup(groupIds[focusIndex]);
             });
             menu.appendChild(item);
         });
     }
 
-    function refreshFocus() {
+    function syncMenuFocus() {
+        // The focused item is fully highlighted only while the menu holds true
+        // focus; when the results pane is active it is shown "ghosted" so it is
+        // clear the menu isn't focused, while still marking where focus returns.
+        var focusedClass = 'menuItem focused' + (pane === 'results' ? ' ghosted' : '');
         var items = document.querySelectorAll('.menuItem');
         for (var i = 0; i < items.length; i++) {
-            items[i].className = 'menuItem' + (i === focusIndex ? ' focused' : '');
+            items[i].className = i === focusIndex ? focusedClass : 'menuItem';
         }
+
+        // Mark the results pane (via its title) when it holds true focus.
+        var resultsTitle = document.getElementById('resultsTitle');
+        resultsTitle.className = pane === 'results' ? 'focused' : '';
         var focused = items[focusIndex];
         if (focused && focused.scrollIntoView) {
             focused.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function focusedResultData() {
+        var rows = document.querySelectorAll('.caseRow');
+        var row = rows[resultIndex];
+        return row ? row.querySelector('.caseData') : null;
+    }
+
+    function dataIsScrollable(data) {
+        return data && data.style.display !== 'none' && data.scrollHeight > data.clientHeight;
+    }
+
+    // Highlights the focused case row (so Up/Down scroll the page row-by-row) and,
+    // while inside a result, marks its data block as the active scroll target.
+    function syncResultFocus() {
+        var rows = document.querySelectorAll('.caseRow');
+        for (var i = 0; i < rows.length; i++) {
+            var cls = 'caseRow';
+            if (pane === 'results' && i === resultIndex) {
+                cls += ' focused' + (inResult ? ' scrolling' : '');
+            }
+            rows[i].className = cls;
+        }
+        if (pane === 'results' && rows[resultIndex] && rows[resultIndex].scrollIntoView) {
+            rows[resultIndex].scrollIntoView({ block: 'nearest' });
         }
     }
 
@@ -173,6 +211,9 @@ window.harness = (function () {
             return;
         }
         pane = 'results';
+        resultIndex = 0;
+        inResult = false;
+        syncMenuFocus();
         document.getElementById('resultsTitle').textContent = group.label || id;
         document.getElementById('resultsList').innerHTML = '';
 
@@ -191,43 +232,83 @@ window.harness = (function () {
                 view.settle(false, err);
             }
         });
+
+        syncResultFocus();
     }
 
     // ---- remote / keyboard navigation -----------------------------------
 
-    // Browser arrow/enter codes plus common STB Back codes (8, 461).
+    // Map raw key codes to semantic actions in one place: browser arrows/enter
+    // plus common STB codes (Back is 8/461, joining Left). Enter ('select') and
+    // Right are kept distinct because Right enters a result but does not exit one.
+    var KEY_ACTIONS = {
+        40: 'down',
+        38: 'up',
+        13: 'select',
+        39: 'right',
+        37: 'back',
+        8: 'back',
+        461: 'back'
+    };
+
+    // Each handler acts on a semantic action; unrecognised actions are ignored.
+
+    function handleMenuKey(action) {
+        if (action === 'down') {
+            focusIndex = Math.min(focusIndex + 1, groupIds.length - 1);
+            syncMenuFocus();
+        } else if (action === 'up') {
+            focusIndex = Math.max(focusIndex - 1, 0);
+            syncMenuFocus();
+        } else if (action === 'select' || action === 'right') {
+            runGroup(groupIds[focusIndex]);
+        }
+    }
+
+    // Results pane: navigate between case rows (scrolls the page row-by-row).
+    function handleResultKey(action) {
+        if (action === 'down') {
+            resultIndex = Math.min(resultIndex + 1, document.querySelectorAll('.caseRow').length - 1);
+            syncResultFocus();
+        } else if (action === 'up') {
+            resultIndex = Math.max(resultIndex - 1, 0);
+            syncResultFocus();
+        } else if (action === 'select' || action === 'right') {
+            // Scroll into this result if its data overflows.
+            if (dataIsScrollable(focusedResultData())) {
+                inResult = true;
+                syncResultFocus();
+            }
+        } else if (action === 'back') {
+            pane = 'menu';
+            syncMenuFocus();
+            syncResultFocus();
+        }
+    }
+
+    // Scrolling within the focused result's data block.
+    function handleDataScrollKey(action) {
+        var data = focusedResultData();
+        if (action === 'down') {
+            if (data) data.scrollTop += DATA_SCROLL_STEP_PX;
+        } else if (action === 'up') {
+            if (data) data.scrollTop -= DATA_SCROLL_STEP_PX;
+        } else if (action === 'back' || action === 'select') {
+            // Exit the result, back to row navigation.
+            inResult = false;
+            syncResultFocus();
+        }
+    }
+
     function onKeyDown(e) {
-        var code = e.keyCode || e.which;
-        var handled = true;
-
-        if (pane === 'menu') {
-            if (code === 40) {
-                // Down
-                focusIndex = Math.min(focusIndex + 1, groupIds.length - 1);
-                refreshFocus();
-            } else if (code === 38) {
-                // Up
-                focusIndex = Math.max(focusIndex - 1, 0);
-                refreshFocus();
-            } else if (code === 13 || code === 39) {
-                // Enter / Right -> run + move to results
-                runGroup(groupIds[focusIndex]);
-            } else {
-                handled = false;
-            }
-        } else {
-            // results pane
-            if (code === 37 || code === 8 || code === 461) {
-                // Left / Back -> return to menu
-                pane = 'menu';
-            } else {
-                handled = false;
-            }
+        e.preventDefault();
+        
+        var action = KEY_ACTIONS[e.keyCode || e.which];
+        if (!action) {
+            return;
         }
-
-        if (handled) {
-            e.preventDefault();
-        }
+        var handler = pane === 'menu' ? handleMenuKey : inResult ? handleDataScrollKey : handleResultKey;
+        handler(action);
     }
 
     // ---- public ----------------------------------------------------------
@@ -246,7 +327,7 @@ window.harness = (function () {
         setStatus('mode: ' + (env ? env.mode : 'unknown') + '  |  onesdk.VERSION: ' + version);
 
         if (groupIds.length) {
-            refreshFocus();
+            syncMenuFocus();
         }
     }
 

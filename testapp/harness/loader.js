@@ -22,24 +22,20 @@
  *   auto   — the platform/STB injects the OIPF library globally before our
  *            scripts run; we must NOT load a second copy.
  *
- * Mode is forced with ?lib=local or ?lib=auto. With no param we auto-detect:
- * if the globals already exist we treat it as `auto`, otherwise we fall back to
- * `local` and inject the bundle.
+ * Mode defaults to `auto` (the most common case going forward — the library is
+ * injected by the platform). Pass ?lib=local to instead load the bundled copy.
  */
 (function () {
     var LIB_SRC = '../dist/stb/oipf-bbc.js';
     var AUTO_POLL_INTERVAL_MS = 100;
     var AUTO_POLL_TIMEOUT_MS = 3000;
 
-    function getParam(name) {
-        var match = new RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
-        return match ? decodeURIComponent(match[1]) : null;
-    }
+    var params = new URLSearchParams(window.location.search);
 
     function librariesPresent() {
-        return typeof window.oipfObjectFactory !== 'undefined' &&
-            typeof window.bbc !== 'undefined' &&
-            typeof window.onesdk !== 'undefined';
+        // Detect on oipfObjectFactory only — it is the one global common to both
+        // the oipf-bbc library and the legacy library we compare against.
+        return typeof window.oipfObjectFactory !== 'undefined';
     }
 
     function start(mode) {
@@ -85,10 +81,8 @@
         }, AUTO_POLL_INTERVAL_MS);
     }
 
-    var requested = getParam('lib');
-    var mode = requested === 'auto' || requested === 'local'
-        ? requested
-        : librariesPresent() ? 'auto' : 'local';
+    var requested = params.get('lib');
+    var mode = requested === 'local' ? 'local' : 'auto';
 
     if (mode === 'auto') {
         loadAuto();
