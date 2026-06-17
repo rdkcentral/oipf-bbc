@@ -29,9 +29,13 @@
 
         <main id="appBody">
             <nav id="menu" tabindex="0">
-                <div id="menuScroll"></div>
-                <div id="menuScrollUp" class="scrollHint" aria-hidden="true">&#9650;</div>
-                <div id="menuScrollDown" class="scrollHint" aria-hidden="true">&#9660;</div>
+                <div id="menuBreadcrumb"></div>
+                <div id="menuCaption"></div>
+                <div id="menuViewport">
+                    <div id="menuScroll"></div>
+                    <div id="menuScrollUp" class="scrollHint" aria-hidden="true">&#9650;</div>
+                    <div id="menuScrollDown" class="scrollHint" aria-hidden="true">&#9660;</div>
+                </div>
             </nav>
             <section id="results">
                 <h2 id="resultsTitle">Select a test group</h2>
@@ -57,10 +61,12 @@
             the loader source for the two supported environments.
         -->
         <script src="harness/harness.js"></script>
-        <script src="tests/displayInfo.js"></script>
+        <!-- Registration order sets menu order: interface features first (so the
+             top level is bbc / Factory / DOM), then the global onesdk category. -->
         <script src="tests/configuration.js"></script>
         <script src="tests/applicationManager.js"></script>
         <script src="tests/videoBroadcast.js"></script>
+        <script src="tests/displayInfo.js"></script>
         <script src="harness/loader.js"></script>
     </body>
 </html>

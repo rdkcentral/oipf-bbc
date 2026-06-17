@@ -14,9 +14,13 @@
  * limitations under the License.
  */
 
-/* Tests for onesdk display APIs and getPrimaryDisplay. */
-harness.tests.displayInfo = {
-    label: 'Display Info',
+/*
+ * Tests for onesdk display APIs and getPrimaryDisplay. These are global (not tied
+ * to an interface type), so they live under their own top-level 'onesdk' category
+ * rather than being expanded across bbc/Factory/DOM.
+ */
+harness.register({
+    path: ['onesdk', 'Display Info'],
     cases: [
         {
             name: 'onesdk.VERSION',
@@ -38,4 +42,4 @@ harness.tests.displayInfo = {
             }
         }
     ]
-};
+});

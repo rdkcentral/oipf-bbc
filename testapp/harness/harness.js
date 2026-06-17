@@ -17,7 +17,8 @@
 /*
  * Minimal, dependency-free test harness for the oipf-bbc library.
  *
- * Test groups self-register onto `harness.tests` (see the files in tests/).
+ * Test groups self-register via `harness.register({ path, accessors, cases })`
+ * (see the files in tests/); the harness builds a drill-down menu tree from them.
  * `harness.init()` is called by harness/loader.js once the library is resolved
  * (either the local ../dist copy, or a platform-injected instance).
  *
@@ -25,16 +26,35 @@
  * console.log / console.error, since the target STB browser has no devtools.
  */
 window.harness = (function () {
-    var tests = {};
+    // Generic menu tree. Branch nodes have `children`; leaf nodes carry a `group`
+    // (a runnable test group). Nodes may carry a `subtitle` (second menu line) and
+    // a `caption` (help text shown above this node's children). Built by register().
+    var root = {
+        label: 'Home',
+        children: [],
+        index: {},
+        group: null,
+        subtitle: null,
+        caption: 'How are OIPF objects accessed? Choose an interface type, or a global category.'
+    };
 
-    var groupIds = [];
+    // Placeholder token used in a register() path to mean "expand across every
+    // interface type". INTERFACE_TYPES is the canonical set and ordering; each
+    // `description` explains the access path to a newcomer (shown as the interface
+    // node's menu subtitle and as the caption once drilled into it).
+    var INTERFACE = { interfacePlaceholder: true };
+    var INTERFACE_TYPES = [
+        { key: 'bbc', label: 'bbc', description: 'the window.bbc facade API' },
+        { key: 'factory', label: 'Factory', description: 'objects from oipfObjectFactory.createXObject()' },
+        { key: 'dom', label: 'DOM', description: '<object> elements resolved via getElementById' }
+    ];
 
-    // All transient navigation-cursor state, grouped so the upcoming nested-menu
-    // work (a menu that opens another menu) can localise changes here — e.g. turn
-    // this into a stack of levels — rather than threading new globals throughout.
+    // Navigation state. `levels` is the drill-down stack of branch nodes in view
+    // (last = current level, each with its own focus); the rest is the
+    // results-pane cursor. Grouped so adding menu layers stays localised here.
     var nav = {
+        levels: [], // [{ node, focusIndex }] — set in init()
         pane: 'menu', // 'menu' | 'results'
-        focusIndex: 0, // focused menu item
         resultIndex: 0, // focused case row while nav.pane === 'results'
         inResult: false, // true while scrolling within the focused result's data
         reloadPending: false // true while the results pane shows a setup-failure reload prompt
@@ -116,38 +136,116 @@ window.harness = (function () {
         }
     }
 
-    function buildMenu() {
+    function currentLevel() {
+        return nav.levels[nav.levels.length - 1];
+    }
+
+    // A node is a leaf (runnable test group) when it carries a group; anything
+    // else is a branch to drill into. Keyed on `group`, not child count, so an
+    // empty branch isn't mistaken for a leaf (or a group-bearing node for a branch).
+    function isLeaf(node) {
+        return !!node.group;
+    }
+
+    // Renders the current level's children into the menu column and refreshes the
+    // breadcrumb. Called when drilling in/out; intra-level focus moves only call
+    // syncMenuFocus.
+    function renderLevel() {
+        var level = currentLevel();
         var menu = document.getElementById('menuScroll');
         menu.innerHTML = '';
-        groupIds = Object.keys(tests);
-        groupIds.forEach(function (id, i) {
+        level.node.children.forEach(function (child, i) {
             var item = document.createElement('div');
-            item.className = 'menuItem' + (i === nav.focusIndex ? ' focused' : '');
-            item.textContent = tests[id].label || id;
-            item.setAttribute('data-index', String(i));
+            item.className = 'menuItem';
+
+            var text = document.createElement('div');
+            text.className = 'menuItemText';
+            var label = document.createElement('span');
+            label.className = 'menuLabel';
+            label.textContent = child.label;
+            text.appendChild(label);
+            if (child.subtitle) {
+                // Second line explaining the item (e.g. what an interface means).
+                var subtitle = document.createElement('span');
+                subtitle.className = 'menuSubtitle';
+                subtitle.textContent = child.subtitle;
+                text.appendChild(subtitle);
+            }
+            item.appendChild(text);
+
+            if (!isLeaf(child)) {
+                // Branch — show a drill-in affordance.
+                var chevron = document.createElement('span');
+                chevron.className = 'menuChevron';
+                chevron.textContent = '›';
+                item.appendChild(chevron);
+            }
+
             item.addEventListener('click', function () {
-                nav.focusIndex = i;
-                syncMenuFocus();
-                runGroup(groupIds[nav.focusIndex]);
+                level.focusIndex = i;
+                selectCurrent();
             });
             menu.appendChild(item);
         });
+        renderBreadcrumb();
+        renderCaption();
+        syncMenuFocus();
+    }
+
+    // Optional help text for the current level (e.g. "How are OIPF objects
+    // accessed?"), taken from the level's node; hidden when there's none.
+    function renderCaption() {
+        var el = document.getElementById('menuCaption');
+        if (!el) {
+            return;
+        }
+        var caption = currentLevel().node.caption;
+        el.textContent = caption || '';
+        el.style.display = caption ? 'block' : 'none';
+    }
+
+    function renderBreadcrumb() {
+        var el = document.getElementById('menuBreadcrumb');
+        if (!el) {
+            return;
+        }
+        // root label + each pushed branch level's label.
+        var labels = nav.levels.map(function (l) {
+            return l.node.label;
+        });
+        el.textContent = labels.join(' › ');
+    }
+
+    // Drills into the focused branch, or runs the focused leaf.
+    function selectCurrent() {
+        var level = currentLevel();
+        var child = level.node.children[level.focusIndex];
+        if (!child) {
+            return;
+        }
+        if (isLeaf(child)) {
+            runGroup(child);
+        } else {
+            nav.levels.push({ node: child, focusIndex: 0 });
+            renderLevel();
+        }
     }
 
     function syncMenuFocus() {
         // The focused item is fully highlighted only while the menu holds true
         // focus; when the results pane is active it is shown "ghosted" so it is
         // clear the menu isn't focused, while still marking where focus returns.
+        var level = currentLevel();
         var focusedClass = 'menuItem focused' + (nav.pane === 'results' ? ' ghosted' : '');
         var items = document.querySelectorAll('.menuItem');
         for (var i = 0; i < items.length; i++) {
-            items[i].className = i === nav.focusIndex ? focusedClass : 'menuItem';
+            items[i].className = i === level.focusIndex ? focusedClass : 'menuItem';
         }
 
         // Mark the results pane (via its title) when it holds true focus.
         var resultsTitle = document.getElementById('resultsTitle');
         resultsTitle.className = nav.pane === 'results' ? 'focused' : '';
-        var focused = items[nav.focusIndex];
+        var focused = items[level.focusIndex];
         if (focused && focused.scrollIntoView) {
             focused.scrollIntoView({ block: 'nearest' });
         }
@@ -335,8 +433,8 @@ window.harness = (function () {
         syncResultFocus();
     }
 
-    function runGroup(id) {
-        var group = tests[id];
+    function runGroup(node) {
+        var group = node.group;
         if (!group) {
             return;
         }
@@ -345,18 +443,27 @@ window.harness = (function () {
         nav.inResult = false;
         nav.reloadPending = false;
         syncMenuFocus();
-        document.getElementById('resultsTitle').textContent = group.label || id;
+        document.getElementById('resultsTitle').textContent = node.label;
         document.getElementById('resultsList').innerHTML = '';
 
+        // Leaf that exists for an interface type it doesn't support
+        if (group.naMessage) {
+            var naView = renderCase('not supported');
+            naView.row.__inert = true; // not real data — can't be entered/scrolled
+            naView.settle(false, group.naMessage);
+            syncResultFocus();
+            return;
+        }
+
         // Optional setup() yields a context passed to every case. Its result is
-        // cached so re-opening a group reuses the same object (some library
-        // objects are single-instance per page load and would throw if rebuilt).
-        // If setup throws or yields no object — the cross-access conflict for
-        // single-instance features — show a reload prompt instead of the cases.
+        // cached (by node id) so re-opening a group reuses the same object (some
+        // library objects are single-instance per page load and would throw if
+        // rebuilt). If setup throws or yields no object — the cross-access conflict
+        // for single-instance features — show a reload prompt instead of the cases.
         var ctx;
         if (typeof group.setup === 'function') {
-            if (Object.prototype.hasOwnProperty.call(setupCache, id)) {
-                ctx = setupCache[id];
+            if (Object.prototype.hasOwnProperty.call(setupCache, node.id)) {
+                ctx = setupCache[node.id];
             } else {
                 try {
                     ctx = group.setup();
@@ -365,7 +472,7 @@ window.harness = (function () {
                     return;
                 }
                 if (ctx) {
-                    setupCache[id] = ctx;
+                    setupCache[node.id] = ctx;
                 }
             }
             if (!ctx) {
@@ -407,14 +514,21 @@ window.harness = (function () {
     // Each handler acts on a semantic action; unrecognised actions are ignored.
 
     function handleMenuKey(action) {
+        var level = currentLevel();
         if (action === 'down') {
-            nav.focusIndex = Math.min(nav.focusIndex + 1, groupIds.length - 1);
+            level.focusIndex = Math.min(level.focusIndex + 1, level.node.children.length - 1);
             syncMenuFocus();
         } else if (action === 'up') {
-            nav.focusIndex = Math.max(nav.focusIndex - 1, 0);
+            level.focusIndex = Math.max(level.focusIndex - 1, 0);
             syncMenuFocus();
         } else if (action === 'select' || action === 'right') {
-            runGroup(groupIds[nav.focusIndex]);
+            selectCurrent();
+        } else if (action === 'back') {
+            // Pop a drill-down level; no-op at the root.
+            if (nav.levels.length > 1) {
+                nav.levels.pop();
+                renderLevel();
+            }
         }
     }
 
@@ -440,6 +554,8 @@ window.harness = (function () {
             var focusedRow = document.querySelectorAll('.caseRow')[nav.resultIndex];
             if (isArmed(focusedRow)) {
                 fireArmed(focusedRow);
+            } else if (focusedRow && focusedRow.__inert) {
+                // Inert row (e.g. an N/A message) — nothing to enter.
             } else if (dataIsScrollable(focusedResultData())) {
                 // Otherwise scroll into this result if its data overflows.
                 nav.inResult = true;
@@ -481,7 +597,8 @@ window.harness = (function () {
 
     function init(env) {
         captureConsole();
-        buildMenu();
+        nav.levels = [{ node: root, focusIndex: 0 }];
+        renderLevel();
         document.addEventListener('keydown', onKeyDown);
         document.getElementById('resultsScroll').addEventListener('scroll', updateResultHints);
         document.getElementById('menuScroll').addEventListener('scroll', updateMenuHints);
@@ -497,10 +614,6 @@ window.harness = (function () {
             /* ignore */
         }
         setStatus('mode: ' + (env ? env.mode : 'unknown') + '  |  onesdk.VERSION: ' + version);
-
-        if (groupIds.length) {
-            syncMenuFocus();
-        }
     }
 
     function fatal(message) {
@@ -541,35 +654,91 @@ window.harness = (function () {
         };
     }
 
-    var ACCESS_TYPES = [
-        { key: 'bbc', label: 'bbc' },
-        { key: 'factory', label: 'Factory' },
-        { key: 'dom', label: 'DOM' }
-    ];
+    function childNode(parent, label) {
+        if (!parent.index[label]) {
+            var node = { label: label, children: [], index: {}, group: null, id: null, subtitle: null, caption: null };
+            parent.index[label] = node;
+            parent.children.push(node);
+        }
+        return parent.index[label];
+    }
 
-    // Registers one menu entry per access type for a feature. Each entry shares
-    // the same `cases`; its `setup` is the matching accessor, so the resolved
-    // object is created once and passed as the context to every case.
-    function registerOipfFeature(spec) {
-        ACCESS_TYPES.forEach(function (type) {
-            var accessor = spec.accessors[type.key];
-            if (!accessor) {
-                return;
+    // Inserts a leaf at an explicit path, creating branch nodes as needed. Warns
+    // on a path collision — where a leaf and a branch would share a node — since
+    // that leaves one of them unreachable (the leaf wins; see isLeaf).
+    function insertLeaf(pathArr, group) {
+        var id = pathArr.join(' / ');
+        pathArr.forEach(function (segment, i) {
+            if (typeof segment !== 'string') {
+                console.warn('Menu path "' + id + '" has a non-string segment at index ' + i +
+                    ' — likely an unexpanded INTERFACE placeholder or a mis-authored path.');
             }
-            tests[spec.key + '_' + type.key] = {
-                label: spec.label + ' — ' + type.label,
-                setup: accessor,
-                cases: spec.cases
-            };
+        });
+        var node = root;
+        for (var i = 0; i < pathArr.length; i++) {
+            node = childNode(node, pathArr[i]);
+            if (i < pathArr.length - 1 && node.group) {
+                console.warn('Menu path collision: "' + id + '" nests under a ' +
+                    'registered test group at "' + node.id + '" — the deeper path is unreachable.');
+            }
+        }
+        if (node.group) {
+            console.warn('Menu path collision: a test group is already registered at "' + id + '" — overwriting.');
+        } else if (node.children.length) {
+            console.warn('Menu path collision: "' + id + '" is also a submenu — its children become unreachable.');
+        }
+        node.group = group;
+        node.id = id;
+    }
+
+    // Registers a test group at an explicit `path`. A path containing
+    // harness.INTERFACE is expanded once per interface type (wiring the matching
+    // accessor from `accessors`; a missing one becomes an N/A leaf). A path
+    // without it is placed literally (e.g. the global onesdk category).
+    function register(spec) {
+        var path = spec.path || [];
+        var ifaceIdx = path.indexOf(INTERFACE);
+        if (ifaceIdx === -1) {
+            // A literal path whose first segment is an interface label almost
+            // certainly meant to use harness.INTERFACE: as written it merges into
+            // the expanded interface branch as a leaf with no accessor wiring.
+            var collides = INTERFACE_TYPES.some(function (type) {
+                return type.label === path[0];
+            });
+            if (collides) {
+                console.warn('register: literal path "' + path.join(' / ') + '" starts with the ' +
+                    'interface label "' + path[0] + '" but has no INTERFACE placeholder — it will ' +
+                    'merge into that interface branch with no accessor. Use harness.INTERFACE instead.');
+            }
+            insertLeaf(path, { cases: spec.cases });
+            return;
+        }
+        INTERFACE_TYPES.forEach(function (type) {
+            var concrete = path.slice();
+            concrete[ifaceIdx] = type.label;
+            var accessor = spec.accessors && spec.accessors[type.key];
+            if (accessor) {
+                insertLeaf(concrete, { setup: accessor, cases: spec.cases });
+            } else {
+                insertLeaf(concrete, { naMessage: 'Not available via ' + type.label });
+            }
+            // Describe the interface node (the placeholder segment) for newcomers:
+            // subtitle in the parent list, caption once drilled in. (ifaceIdx 0 =
+            // top level, the supported case; deeper placeholders just stay plain.)
+            if (ifaceIdx === 0) {
+                var ifaceNode = root.index[type.label];
+                ifaceNode.subtitle = type.description;
+                ifaceNode.caption = 'Tests using ' + type.description + '.';
+            }
         });
     }
 
     return {
-        tests: tests,
         init: init,
         fatal: fatal,
         log: appendLog,
-        domObjectAccessor: domObjectAccessor,
-        registerOipfFeature: registerOipfFeature
+        register: register,
+        INTERFACE: INTERFACE,
+        domObjectAccessor: domObjectAccessor
     };
 })();

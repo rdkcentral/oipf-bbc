@@ -19,9 +19,8 @@
  * across all three access types is the `configuration` property.
  */
 (function () {
-    harness.registerOipfFeature({
-        key: 'configuration',
-        label: 'Configuration',
+    harness.register({
+        path: [harness.INTERFACE, 'Configuration'],
         accessors: {
             bbc: function () {
                 return bbc.oipfConfiguration;

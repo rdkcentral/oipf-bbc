@@ -59,41 +59,105 @@ body {
 }
 
 #menu {
+    --pane-bg: #161b23;
     position: relative;
     width: 440px;
     flex: 0 0 440px;
     background: #161b23;
     border-right: 2px solid #2c3440;
     outline: none;
+    display: flex;
+    flex-direction: column;
 }
 
-#menuScroll {
+/* Drill-down path (Home › bbc › …) above the menu list. */
+#menuBreadcrumb {
+    flex: 0 0 auto;
+    padding: 14px 32px 8px;
+    font-size: 18px;
+    color: #9aa6b5;
+}
+
+/* Help text for the current level (hidden when the level has none). */
+#menuCaption {
+    flex: 0 0 auto;
+    padding: 0 32px 14px;
+    font-size: 16px;
+    line-height: 1.35;
+    color: #7e8a99;
+    border-bottom: 1px solid #222a35;
+}
+
+/* Scrolling viewport (menu + results): positioning context for the edge hints. */
+#menuViewport,
+#resultsViewport {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* Scrollers hide their scrollbar — the up/down hints convey off-screen content. */
+#menuScroll,
+#resultsScroll {
     height: 100%;
     overflow-y: auto;
-    /* Hide the scrollbar — the up/down hints convey off-screen content instead. */
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* legacy Edge/IE */
 }
 
-#menuScroll::-webkit-scrollbar {
+#menuScroll::-webkit-scrollbar,
+#resultsScroll::-webkit-scrollbar {
     display: none; /* WebKit (STB browsers) */
 }
 
-/* Menu hints fade over the menu's own background. */
-#menuScrollUp {
+/* Edge hints fade into the owning pane's background (--pane-bg, set per pane). */
+#menuScrollUp,
+#scrollUp {
     top: 0;
-    background: linear-gradient(to bottom, #161b23 30%, rgba(22, 27, 35, 0));
+    background: linear-gradient(to bottom, var(--pane-bg) 30%, transparent);
 }
 
-#menuScrollDown {
+#menuScrollDown,
+#scrollDown {
     bottom: 0;
-    background: linear-gradient(to top, #161b23 30%, rgba(22, 27, 35, 0));
+    background: linear-gradient(to top, var(--pane-bg) 30%, transparent);
 }
 
 .menuItem {
     padding: 22px 32px;
     cursor: pointer;
     border-bottom: 1px solid #222a35;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Stacks the label over its optional subtitle. */
+.menuItemText {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Second line under a menu item (e.g. what an interface means). */
+.menuSubtitle {
+    margin-top: 4px;
+    font-size: 16px;
+    color: #9aa6b5;
+}
+
+/* Keep the subtitle legible on the blue focused background. */
+.menuItem.focused .menuSubtitle {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* Drill-in affordance shown on branch items. */
+.menuChevron {
+    margin-left: 16px;
+    color: #9aa6b5;
+}
+
+.menuItem.focused .menuChevron {
+    color: #ffffff;
 }
 
 .menuItem.focused {
@@ -112,6 +176,7 @@ body {
 }
 
 #results {
+    --pane-bg: #11151c;
     flex: 1 1 auto;
     min-height: 0;
     padding: 24px 32px;
@@ -135,27 +200,9 @@ body {
     border-bottom-color: #2563eb;
 }
 
-/* Scrolling viewport: holds the rows and the edge indicators. */
-#resultsViewport {
-    position: relative;
-    flex: 1 1 auto;
-    min-height: 0;
-}
-
-#resultsScroll {
-    height: 100%;
-    overflow-y: auto;
-    /* Hide the scrollbar — the up/down hints convey off-screen content instead. */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* legacy Edge/IE */
-}
-
-#resultsScroll::-webkit-scrollbar {
-    display: none; /* WebKit (STB browsers) */
-}
-
 /* "More above / below" indicators, anchored to the viewport edges and faded in
-   only when there is off-screen content in that direction. */
+   only when there is off-screen content in that direction. (Menu + results
+   viewport/scroller/gradient rules are shared up in the menu section.) */
 .scrollHint {
     position: absolute;
     left: 0;
@@ -173,16 +220,6 @@ body {
 
 .scrollHint.visible {
     opacity: 1;
-}
-
-#scrollUp {
-    top: 0;
-    background: linear-gradient(to bottom, #11151c 30%, rgba(17, 21, 28, 0));
-}
-
-#scrollDown {
-    bottom: 0;
-    background: linear-gradient(to top, #11151c 30%, rgba(17, 21, 28, 0));
 }
 
 .caseRow {

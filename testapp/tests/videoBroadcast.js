@@ -25,9 +25,8 @@
 (function () {
     var METHODS = ['getChannelConfig', 'bindToCurrentChannel', 'setChannel', 'getComponents', 'selectComponent', 'stop'];
 
-    harness.registerOipfFeature({
-        key: 'videoBroadcast',
-        label: 'Video Broadcast',
+    harness.register({
+        path: [harness.INTERFACE, 'Video Broadcast'],
         accessors: {
             bbc: function () {
                 return bbc.videoBroadcast;

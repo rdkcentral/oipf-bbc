@@ -19,9 +19,8 @@
  * member across all three access types is getOwnerApplication().
  */
 (function () {
-    harness.registerOipfFeature({
-        key: 'applicationManager',
-        label: 'Application Manager',
+    harness.register({
+        path: [harness.INTERFACE, 'Application Manager'],
         accessors: {
             bbc: function () {
                 return bbc.oipfApplicationManager;
