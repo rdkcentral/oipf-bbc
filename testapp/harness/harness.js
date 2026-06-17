@@ -28,11 +28,18 @@ window.harness = (function () {
     var tests = {};
 
     var groupIds = [];
-    var focusIndex = 0;
-    var pane = 'menu'; // 'menu' | 'results'
 
-    var resultIndex = 0; // focused case row while pane === 'results'
-    var inResult = false; // true while scrolling within the focused result's data
+    // All transient navigation-cursor state, grouped so the upcoming nested-menu
+    // work (a menu that opens another menu) can localise changes here — e.g. turn
+    // this into a stack of levels — rather than threading new globals throughout.
+    var nav = {
+        pane: 'menu', // 'menu' | 'results'
+        focusIndex: 0, // focused menu item
+        resultIndex: 0, // focused case row while nav.pane === 'results'
+        inResult: false, // true while scrolling within the focused result's data
+        reloadPending: false // true while the results pane shows a setup-failure reload prompt
+    };
+
     var DATA_SCROLL_STEP_PX = 60;
 
     // Successful setup() results, keyed by group id. Some library objects are
@@ -40,9 +47,6 @@ window.harness = (function () {
     // ApplicationManager) with no teardown API — so re-opening a group must
     // reuse the object rather than reconstruct it (which would throw).
     var setupCache = {};
-    // True while the results pane is showing a setup failure with a reload
-    // prompt; OK/Enter then reloads the page to reset the session.
-    var reloadPending = false;
 
     // ---- on-screen log (mirrors console) --------------------------------
 
@@ -118,13 +122,13 @@ window.harness = (function () {
         groupIds = Object.keys(tests);
         groupIds.forEach(function (id, i) {
             var item = document.createElement('div');
-            item.className = 'menuItem' + (i === focusIndex ? ' focused' : '');
+            item.className = 'menuItem' + (i === nav.focusIndex ? ' focused' : '');
             item.textContent = tests[id].label || id;
             item.setAttribute('data-index', String(i));
             item.addEventListener('click', function () {
-                focusIndex = i;
+                nav.focusIndex = i;
                 syncMenuFocus();
-                runGroup(groupIds[focusIndex]);
+                runGroup(groupIds[nav.focusIndex]);
             });
             menu.appendChild(item);
         });
@@ -134,16 +138,16 @@ window.harness = (function () {
         // The focused item is fully highlighted only while the menu holds true
         // focus; when the results pane is active it is shown "ghosted" so it is
         // clear the menu isn't focused, while still marking where focus returns.
-        var focusedClass = 'menuItem focused' + (pane === 'results' ? ' ghosted' : '');
+        var focusedClass = 'menuItem focused' + (nav.pane === 'results' ? ' ghosted' : '');
         var items = document.querySelectorAll('.menuItem');
         for (var i = 0; i < items.length; i++) {
-            items[i].className = i === focusIndex ? focusedClass : 'menuItem';
+            items[i].className = i === nav.focusIndex ? focusedClass : 'menuItem';
         }
 
         // Mark the results pane (via its title) when it holds true focus.
         var resultsTitle = document.getElementById('resultsTitle');
-        resultsTitle.className = pane === 'results' ? 'focused' : '';
-        var focused = items[focusIndex];
+        resultsTitle.className = nav.pane === 'results' ? 'focused' : '';
+        var focused = items[nav.focusIndex];
         if (focused && focused.scrollIntoView) {
             focused.scrollIntoView({ block: 'nearest' });
         }
@@ -152,7 +156,7 @@ window.harness = (function () {
 
     function focusedResultData() {
         var rows = document.querySelectorAll('.caseRow');
-        var row = rows[resultIndex];
+        var row = rows[nav.resultIndex];
         return row ? row.querySelector('.caseData') : null;
     }
 
@@ -166,21 +170,21 @@ window.harness = (function () {
         var rows = document.querySelectorAll('.caseRow');
         for (var i = 0; i < rows.length; i++) {
             var cls = 'caseRow';
-            if (pane === 'results' && i === resultIndex) {
-                cls += ' focused' + (inResult ? ' scrolling' : '');
+            if (nav.pane === 'results' && i === nav.resultIndex) {
+                cls += ' focused' + (nav.inResult ? ' scrolling' : '');
             }
             rows[i].className = cls;
         }
         var scroller = document.getElementById('resultsScroll');
-        var row = rows[resultIndex];
-        if (pane === 'results' && row && scroller) {
+        var row = rows[nav.resultIndex];
+        if (nav.pane === 'results' && row && scroller) {
             // Snap to the true extremes for the first/last rows so the viewport
             // can actually reach top/bottom (a tall last row aligned 'nearest'
             // would leave content — and the "more below" hint — stuck on screen);
             // intermediate rows just scroll the minimum needed.
-            if (resultIndex === 0) {
+            if (nav.resultIndex === 0) {
                 scroller.scrollTop = 0;
-            } else if (resultIndex === rows.length - 1) {
+            } else if (nav.resultIndex === rows.length - 1) {
                 scroller.scrollTop = scroller.scrollHeight;
             } else if (row.scrollIntoView) {
                 row.scrollIntoView({ block: 'nearest' });
@@ -327,7 +331,7 @@ window.harness = (function () {
         list.appendChild(note);
         list.appendChild(button);
 
-        reloadPending = true;
+        nav.reloadPending = true;
         syncResultFocus();
     }
 
@@ -336,10 +340,10 @@ window.harness = (function () {
         if (!group) {
             return;
         }
-        pane = 'results';
-        resultIndex = 0;
-        inResult = false;
-        reloadPending = false;
+        nav.pane = 'results';
+        nav.resultIndex = 0;
+        nav.inResult = false;
+        nav.reloadPending = false;
         syncMenuFocus();
         document.getElementById('resultsTitle').textContent = group.label || id;
         document.getElementById('resultsList').innerHTML = '';
@@ -404,45 +408,45 @@ window.harness = (function () {
 
     function handleMenuKey(action) {
         if (action === 'down') {
-            focusIndex = Math.min(focusIndex + 1, groupIds.length - 1);
+            nav.focusIndex = Math.min(nav.focusIndex + 1, groupIds.length - 1);
             syncMenuFocus();
         } else if (action === 'up') {
-            focusIndex = Math.max(focusIndex - 1, 0);
+            nav.focusIndex = Math.max(nav.focusIndex - 1, 0);
             syncMenuFocus();
         } else if (action === 'select' || action === 'right') {
-            runGroup(groupIds[focusIndex]);
+            runGroup(groupIds[nav.focusIndex]);
         }
     }
 
     // Results pane: navigate between case rows (scrolls the page row-by-row).
     function handleResultKey(action) {
-        if (reloadPending) {
+        if (nav.reloadPending) {
             // Setup-failure state: OK reloads the page, Back returns to the menu.
             if (action === 'select' || action === 'right') {
                 window.location.reload();
             } else if (action === 'back') {
-                pane = 'menu';
+                nav.pane = 'menu';
                 syncMenuFocus();
             }
             return;
         }
         if (action === 'down') {
-            resultIndex = Math.min(resultIndex + 1, document.querySelectorAll('.caseRow').length - 1);
+            nav.resultIndex = Math.min(nav.resultIndex + 1, document.querySelectorAll('.caseRow').length - 1);
             syncResultFocus();
         } else if (action === 'up') {
-            resultIndex = Math.max(resultIndex - 1, 0);
+            nav.resultIndex = Math.max(nav.resultIndex - 1, 0);
             syncResultFocus();
         } else if (action === 'select' || action === 'right') {
-            var focusedRow = document.querySelectorAll('.caseRow')[resultIndex];
+            var focusedRow = document.querySelectorAll('.caseRow')[nav.resultIndex];
             if (isArmed(focusedRow)) {
                 fireArmed(focusedRow);
             } else if (dataIsScrollable(focusedResultData())) {
                 // Otherwise scroll into this result if its data overflows.
-                inResult = true;
+                nav.inResult = true;
                 syncResultFocus();
             }
         } else if (action === 'back') {
-            pane = 'menu';
+            nav.pane = 'menu';
             syncMenuFocus();
             syncResultFocus();
         }
@@ -457,7 +461,7 @@ window.harness = (function () {
             if (data) data.scrollTop -= DATA_SCROLL_STEP_PX;
         } else if (action === 'back' || action === 'select') {
             // Exit the result, back to row navigation.
-            inResult = false;
+            nav.inResult = false;
             syncResultFocus();
         }
     }
@@ -469,7 +473,7 @@ window.harness = (function () {
         if (!action) {
             return;
         }
-        var handler = pane === 'menu' ? handleMenuKey : inResult ? handleDataScrollKey : handleResultKey;
+        var handler = nav.pane === 'menu' ? handleMenuKey : nav.inResult ? handleDataScrollKey : handleResultKey;
         handler(action);
     }
 
