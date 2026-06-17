@@ -210,17 +210,19 @@ window.harness = (function () {
         updateScrollHints('menuScroll', 'menuScrollUp', 'menuScrollDown');
     }
 
+    function isArmed(row) {
+        return !!(row && row.__armed);
+    }
+
     // Activates a manual (armed) case exactly once: clears the arm flag first so
-    // it can't double-fire from both a click and OK, then runs it. Returns true
-    // if a runner fired. Single source of truth for both activation paths.
+    // it can't double-fire from both a click and OK, then runs it. Safe to call
+    // on any row; single source of truth for both activation paths.
     function fireArmed(row) {
-        if (row && row.__armed) {
+        if (isArmed(row)) {
             var runner = row.__armed;
             row.__armed = null;
             runner();
-            return true;
         }
-        return false;
     }
 
     function renderCase(name) {
@@ -432,8 +434,8 @@ window.harness = (function () {
             syncResultFocus();
         } else if (action === 'select' || action === 'right') {
             var focusedRow = document.querySelectorAll('.caseRow')[resultIndex];
-            if (fireArmed(focusedRow)) {
-                // Activated a manual (armed) case.
+            if (isArmed(focusedRow)) {
+                fireArmed(focusedRow);
             } else if (dataIsScrollable(focusedResultData())) {
                 // Otherwise scroll into this result if its data overflows.
                 inResult = true;
