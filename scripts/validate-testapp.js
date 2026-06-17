@@ -31,27 +31,31 @@ const DIRS = ['testapp/harness', 'testapp/tests', 'scripts'];
 let checked = 0;
 let failures = 0;
 
-DIRS.forEach((dir) => {
-    const abs = path.join(ROOT, dir);
+// Recurse so MVC subfolders (model/, view/, controller/) are covered too.
+function walk(abs) {
     let entries;
     try {
-        entries = fs.readdirSync(abs);
+        entries = fs.readdirSync(abs, { withFileTypes: true });
     } catch (e) {
         return; // directory absent — skip
     }
-    entries
-        .filter((name) => name.endsWith('.js'))
-        .forEach((name) => {
-            const file = path.join(abs, name);
+    entries.forEach((entry) => {
+        const full = path.join(abs, entry.name);
+        if (entry.isDirectory()) {
+            walk(full);
+        } else if (entry.name.endsWith('.js')) {
             checked++;
             try {
-                new vm.Script(fs.readFileSync(file, 'utf8'), { filename: file });
+                new vm.Script(fs.readFileSync(full, 'utf8'), { filename: full });
             } catch (e) {
                 failures++;
-                console.error('Syntax error in ' + path.relative(ROOT, file) + ': ' + e.message);
+                console.error('Syntax error in ' + path.relative(ROOT, full) + ': ' + e.message);
             }
-        });
-});
+        }
+    });
+}
+
+DIRS.forEach((dir) => walk(path.join(ROOT, dir)));
 
 if (failures) {
     console.error(failures + ' file(s) failed validation.');
