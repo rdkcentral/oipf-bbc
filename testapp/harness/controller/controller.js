@@ -24,9 +24,11 @@ window.Harness = window.Harness || {};
 window.Harness.createController = function (deps) {
     var tree = deps.tree;
     var runner = deps.runner;
+    var autoRunner = deps.autoRunner;
     var logView = deps.logView;
     var menuView = deps.menuView;
     var resultView = deps.resultView;
+    var popupView = deps.popupView;
 
     // Map raw key codes to semantic actions in one place: browser arrows/enter
     // plus common STB codes (Back is 8/461, joining Left). Enter ('select') and
@@ -41,7 +43,7 @@ window.Harness.createController = function (deps) {
         461: 'back'
     };
 
-    var pane = 'menu'; // 'menu' | 'results'
+    var pane = 'menu'; // 'menu' | 'results' | 'popup'
     var levels = []; // drill-down stack of { node, savedFocus }; last = current
 
     function setStatus(text) {
@@ -61,10 +63,14 @@ window.Harness.createController = function (deps) {
         menuView.render(top.node, top.savedFocus || 0, breadcrumb, pane === 'results');
     }
 
-    // Drill into a branch or run a leaf (shared by key-select and click).
+    // Drill into a branch, start an autorun, or run a leaf (key-select and click).
     function activate(child) {
         if (tree.isLeaf(child)) {
-            runLeaf(child);
+            if (child.group.autorun) {
+                startAutorun(child.group.autorun, child.label);
+            } else {
+                runLeaf(child);
+            }
         } else {
             levels[levels.length - 1].savedFocus = menuView.focusedIndex();
             levels.push({ node: child, savedFocus: 0 });
@@ -141,6 +147,37 @@ window.Harness.createController = function (deps) {
         resultView.setActive(false);
     }
 
+    // ---- autorun popup ---------------------------------------------------
+
+    // Runs every non-manual case under a scope subtree, streaming results into a
+    // modal popup. The run can't be cancelled (Back is inert until it completes).
+    function startAutorun(scope, label) {
+        pane = 'popup';
+        var stats = autoRunner.collect(scope);
+        popupView.open(label, stats.total);
+        autoRunner
+            .run(scope, function (entry) {
+                popupView.addEntry(entry);
+            })
+            .then(function (summary) {
+                popupView.markComplete(summary);
+            });
+    }
+
+    function handlePopupKey(action) {
+        if (action === 'down') {
+            popupView.scroll(1);
+        } else if (action === 'up') {
+            popupView.scroll(-1);
+        } else if (action === 'back' || action === 'select') {
+            // Dismiss only once the run has finished (no mid-run cancel).
+            if (popupView.isComplete()) {
+                popupView.close();
+                pane = 'menu';
+            }
+        }
+    }
+
     function handleResultKey(action) {
         if (resultView.isInData()) {
             // Scrolling within the focused result's data block.
@@ -169,7 +206,9 @@ window.Harness.createController = function (deps) {
         if (!action) {
             return;
         }
-        if (pane === 'menu') {
+        if (pane === 'popup') {
+            handlePopupKey(action);
+        } else if (pane === 'menu') {
             handleMenuKey(action);
         } else {
             handleResultKey(action);
@@ -181,15 +220,19 @@ window.Harness.createController = function (deps) {
     function init(env) {
         logView.captureConsole();
         pane = 'menu';
+        // All test files have registered by now; add the "▶ Run all tests" entry.
+        tree.buildRunAllMenu();
         levels = [{ node: tree.root, savedFocus: 0 }];
         renderMenu();
 
         document.addEventListener('keydown', onKeyDown);
         document.getElementById('resultsScroll').addEventListener('scroll', resultView.updateHints);
         document.getElementById('menuScroll').addEventListener('scroll', menuView.updateHints);
+        document.getElementById('popupScroll').addEventListener('scroll', popupView.updateHints);
         window.addEventListener('resize', function () {
             resultView.updateHints();
             menuView.updateHints();
+            popupView.updateHints();
         });
 
         var version = '?';

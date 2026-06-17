@@ -21,6 +21,23 @@
  */
 window.Harness = window.Harness || {};
 
+// Formats a test result value for display. Pure (no DOM) — shared by the result
+// and popup views. Errors show name/message (+ optional detail); other values are
+// pretty-printed JSON, falling back to String() for anything non-serialisable.
+window.Harness.pretty = function (value) {
+    if (value instanceof Error) {
+        return value.name + ': ' + value.message + (value.detail ? '\n' + value.detail : '');
+    }
+    if (typeof value === 'string') {
+        return value;
+    }
+    try {
+        return JSON.stringify(value, null, 2);
+    } catch (e) {
+        return String(value);
+    }
+};
+
 // Fades in the up/down indicators when a scroll container has off-screen content
 // in that direction. Shared by the menu and results views.
 window.Harness.updateScrollHints = function (scrollerId, upId, downId) {

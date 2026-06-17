@@ -127,10 +127,33 @@ window.Harness.createTree = function () {
         });
     }
 
+    // Adds a top-level "▶ Run all tests" branch (placed first) whose children are
+    // one autorun leaf per existing top-level category. Each leaf's group carries
+    // { autorun: categoryNode } — the controller runs that subtree instead of
+    // opening it. Call once after all test files have registered (e.g. in init).
+    function buildRunAllMenu() {
+        var categories = root.children.slice(); // snapshot before adding the branch
+        if (!categories.length) {
+            return;
+        }
+        var branch = childNode(root, '▶ Run all tests');
+        branch.caption = 'Choose a test area to run automatically; results appear in a popup.';
+        categories.forEach(function (category) {
+            var leaf = childNode(branch, category.label);
+            leaf.group = { autorun: category };
+            leaf.id = '▶ Run all tests / ' + category.label;
+            leaf.subtitle = 'Every non-manual test under ' + category.label;
+        });
+        // Move the branch to the front of the root list for prominence.
+        root.children.splice(root.children.indexOf(branch), 1);
+        root.children.unshift(branch);
+    }
+
     return {
         root: root,
         isLeaf: isLeaf,
         register: register,
+        buildRunAllMenu: buildRunAllMenu,
         INTERFACE: INTERFACE
     };
 };

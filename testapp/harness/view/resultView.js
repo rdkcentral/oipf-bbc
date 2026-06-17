@@ -34,19 +34,7 @@ window.Harness.createResultView = function () {
     var inResult = false;
     var active = false; // true while the results pane holds true focus
 
-    function pretty(value) {
-        if (value instanceof Error) {
-            return value.name + ': ' + value.message + (value.detail ? '\n' + value.detail : '');
-        }
-        if (typeof value === 'string') {
-            return value;
-        }
-        try {
-            return JSON.stringify(value, null, 2);
-        } catch (e) {
-            return String(value);
-        }
-    }
+    var pretty = window.Harness.pretty;
 
     function updateHints() {
         window.Harness.updateScrollHints('resultsScroll', 'scrollUp', 'scrollDown');

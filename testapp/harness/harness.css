@@ -88,9 +88,10 @@ body {
     border-bottom: 1px solid #222a35;
 }
 
-/* Scrolling viewport (menu + results): positioning context for the edge hints. */
+/* Scrolling viewport (menu + results + popup): positioning context for hints. */
 #menuViewport,
-#resultsViewport {
+#resultsViewport,
+#popupViewport {
     position: relative;
     flex: 1 1 auto;
     min-height: 0;
@@ -98,7 +99,8 @@ body {
 
 /* Scrollers hide their scrollbar — the up/down hints convey off-screen content. */
 #menuScroll,
-#resultsScroll {
+#resultsScroll,
+#popupScroll {
     height: 100%;
     overflow-y: auto;
     scrollbar-width: none; /* Firefox */
@@ -106,19 +108,22 @@ body {
 }
 
 #menuScroll::-webkit-scrollbar,
-#resultsScroll::-webkit-scrollbar {
+#resultsScroll::-webkit-scrollbar,
+#popupScroll::-webkit-scrollbar {
     display: none; /* WebKit (STB browsers) */
 }
 
 /* Edge hints fade into the owning pane's background (--pane-bg, set per pane). */
 #menuScrollUp,
-#scrollUp {
+#scrollUp,
+#popupScrollUp {
     top: 0;
     background: linear-gradient(to bottom, var(--pane-bg) 30%, transparent);
 }
 
 #menuScrollDown,
-#scrollDown {
+#scrollDown,
+#popupScrollDown {
     bottom: 0;
     background: linear-gradient(to top, var(--pane-bg) 30%, transparent);
 }
@@ -375,4 +380,96 @@ body {
 
 .logLine.error {
     color: #f87171;
+}
+
+/* ---- Autorun report popup -------------------------------------------- */
+
+.popup {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.popup.open {
+    display: flex;
+}
+
+.popupPanel {
+    --pane-bg: #161b23;
+    width: 72%;
+    max-width: 1400px;
+    height: 80%;
+    background: #161b23;
+    border: 2px solid #2c3440;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+}
+
+.popupHeader {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 28px;
+    border-bottom: 2px solid #2c3440;
+    font-size: 26px;
+    font-weight: bold;
+}
+
+#popupSummary {
+    font-size: 20px;
+    font-weight: normal;
+    color: #9aa6b5;
+}
+
+#popupScroll {
+    padding: 12px 28px;
+}
+
+.popupFooter {
+    flex: 0 0 auto;
+    padding: 14px 28px;
+    border-top: 1px solid #2c3440;
+    font-size: 18px;
+    color: #9aa6b5;
+}
+
+.popupEntry {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid #1f2730;
+}
+
+.popupEntryText {
+    display: flex;
+    flex-direction: column;
+}
+
+.popupPath {
+    font-size: 15px;
+    color: #9aa6b5;
+}
+
+.popupName {
+    font-size: 18px;
+}
+
+.popupEntry.fail .popupName {
+    color: #f87171;
+}
+
+.popupDetail {
+    margin-top: 6px;
+    font-family: "Courier New", monospace;
+    font-size: 15px;
+    color: #cbd3dd;
+    white-space: pre-wrap;
+    word-break: break-word;
 }

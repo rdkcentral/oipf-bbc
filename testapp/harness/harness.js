@@ -29,8 +29,10 @@
 window.harness = (function () {
     var tree = window.Harness.createTree();
     var runner = window.Harness.createRunner();
+    var autoRunner = window.Harness.createAutoRunner({ tree: tree, runner: runner });
     var logView = window.Harness.createLogView();
     var resultView = window.Harness.createResultView();
+    var popupView = window.Harness.createPopupView();
 
     var controller;
     var menuView = window.Harness.createMenuView({
@@ -42,9 +44,11 @@ window.harness = (function () {
     controller = window.Harness.createController({
         tree: tree,
         runner: runner,
+        autoRunner: autoRunner,
         logView: logView,
         menuView: menuView,
-        resultView: resultView
+        resultView: resultView,
+        popupView: popupView
     });
 
     // Test-authoring helper: returns an accessor (a setup function) that creates a
