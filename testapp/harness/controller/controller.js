@@ -43,7 +43,6 @@ window.Harness.createController = function (deps) {
 
     var pane = 'menu'; // 'menu' | 'results'
     var levels = []; // drill-down stack of { node, savedFocus }; last = current
-    var reloadPending = false; // true while the results pane shows a reload prompt
 
     function setStatus(text) {
         var el = document.getElementById('appStatus');
@@ -108,7 +107,6 @@ window.Harness.createController = function (deps) {
 
     function runLeaf(node) {
         pane = 'results';
-        reloadPending = false;
         menuView.setGhosted(true);
         resultView.setActive(true);
         resultView.reset(node.label);
@@ -117,7 +115,7 @@ window.Harness.createController = function (deps) {
         if (prep.kind === 'unavailable') {
             resultView.showUnavailable(prep.message);
         } else if (prep.kind === 'setupFailure') {
-            reloadPending = true;
+            // The reload button is a focusable item; activating it reloads.
             resultView.showReloadPrompt(prep.error, function () {
                 window.location.reload();
             });
@@ -144,15 +142,6 @@ window.Harness.createController = function (deps) {
     }
 
     function handleResultKey(action) {
-        if (reloadPending) {
-            // Setup-failure state: OK reloads the page, Back returns to the menu.
-            if (action === 'select' || action === 'right') {
-                window.location.reload();
-            } else if (action === 'back') {
-                exitToMenu();
-            }
-            return;
-        }
         if (resultView.isInData()) {
             // Scrolling within the focused result's data block.
             if (action === 'down') {

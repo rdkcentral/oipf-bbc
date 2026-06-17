@@ -52,13 +52,20 @@ window.Harness.createResultView = function () {
         window.Harness.updateScrollHints('resultsScroll', 'scrollUp', 'scrollDown');
     }
 
-    function rows() {
-        return listEl.querySelectorAll('.caseRow');
+    // Focusable items in DOM order: case rows plus the reload button (the note is
+    // not focusable). Row navigation moves over this set, so the reload button
+    // must be deliberately focused before it can be activated.
+    function focusables() {
+        return listEl.querySelectorAll('.caseRow, .reloadButton');
+    }
+
+    function focusedEl() {
+        return focusables()[resultIndex] || null;
     }
 
     function focusedData() {
-        var row = rows()[resultIndex];
-        return row ? row.querySelector('.caseData') : null;
+        var el = focusedEl();
+        return el && el.classList.contains('caseRow') ? el.querySelector('.caseData') : null;
     }
 
     function dataIsScrollable(data) {
@@ -83,23 +90,23 @@ window.Harness.createResultView = function () {
     // inside a result, marks its data block as the active scroll target. Snaps to
     // the true extremes for first/last so the viewport can fully reach top/bottom.
     function syncFocus() {
-        var r = rows();
-        for (var i = 0; i < r.length; i++) {
-            var cls = 'caseRow';
-            if (active && i === resultIndex) {
-                cls += ' focused' + (inResult ? ' scrolling' : '');
+        var els = focusables();
+        for (var i = 0; i < els.length; i++) {
+            var on = active && i === resultIndex;
+            els[i].classList.toggle('focused', on);
+            if (els[i].classList.contains('caseRow')) {
+                els[i].classList.toggle('scrolling', on && inResult);
             }
-            r[i].className = cls;
         }
         titleEl.className = active ? 'focused' : '';
-        var row = r[resultIndex];
-        if (active && row && scrollEl) {
+        var current = els[resultIndex];
+        if (active && current && scrollEl) {
             if (resultIndex === 0) {
                 scrollEl.scrollTop = 0;
-            } else if (resultIndex === r.length - 1) {
+            } else if (resultIndex === els.length - 1) {
                 scrollEl.scrollTop = scrollEl.scrollHeight;
-            } else if (row.scrollIntoView) {
-                row.scrollIntoView({ block: 'nearest' });
+            } else if (current.scrollIntoView) {
+                current.scrollIntoView({ block: 'nearest' });
             }
         }
         updateHints();
@@ -184,20 +191,24 @@ window.Harness.createResultView = function () {
         view.settle(false, message);
     }
 
-    // The setup-failure error row plus a reload prompt; onReload fires on the
-    // button (the controller also maps OK to it via its reload-pending state).
+    // The setup-failure error row plus a reload prompt. The error row is inert;
+    // the reload button is a focusable item (see focusables()) so reload only
+    // fires when the button itself is focused and activated — never from the row.
     function showReloadPrompt(error, onReload) {
-        appendCase('setup').settle(false, error || 'Object not available for this access type.');
+        var errorView = appendCase('setup');
+        errorView.row.__inert = true;
+        errorView.settle(false, error || 'Object not available for this access type.');
 
         var note = document.createElement('div');
         note.className = 'reloadNote';
         note.textContent =
-            'This object may be limited to one instance per page load. Reload to reset ' +
-            'the session and test a different access type.';
+            'This object may be limited to one instance per page load. Navigate down to ' +
+            'the button and press OK to reload and test a different access type.';
 
         var button = document.createElement('div');
         button.className = 'reloadButton';
         button.textContent = '↻ Reload page';
+        button.__reload = onReload; // marks this as the focusable reload action
         button.addEventListener('click', onReload);
 
         listEl.appendChild(note);
@@ -215,7 +226,7 @@ window.Harness.createResultView = function () {
     }
 
     function focusDown() {
-        resultIndex = Math.min(resultIndex + 1, rows().length - 1);
+        resultIndex = Math.min(resultIndex + 1, focusables().length - 1);
         syncFocus();
     }
 
@@ -224,13 +235,18 @@ window.Harness.createResultView = function () {
         syncFocus();
     }
 
-    // OK/Right on the focused row: fire an armed case, ignore an inert row, or
-    // otherwise enter data-scroll mode if the row's data overflows.
+    // OK/Right on the focused item: reload (button), fire an armed case, ignore an
+    // inert row, or otherwise enter data-scroll mode if the row's data overflows.
     function activateFocused() {
-        var row = rows()[resultIndex];
-        if (isArmed(row)) {
-            fireArmed(row);
-        } else if (row && row.__inert) {
+        var el = focusedEl();
+        if (!el) {
+            return;
+        }
+        if (el.__reload) {
+            el.__reload();
+        } else if (isArmed(el)) {
+            fireArmed(el);
+        } else if (el.__inert) {
             return;
         } else if (dataIsScrollable(focusedData())) {
             inResult = true;
