@@ -39,14 +39,14 @@ jobs:
 
       - name: Create Changelog
         id: changelog
-        uses: requarks/changelog-action@v1
+        uses: requarks/changelog-action@b78a3354a01f4a1affb484b9264b506a815c46b1 # v1
         with:
           tag: ${{ github.ref_name }}
           token: ${{ github.token }}
           includeInvalidCommits: true
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3
         with:
           name: ${{ github.ref_name }}
           files: ${{ steps.artifact.outputs.path }}
