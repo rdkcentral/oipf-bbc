@@ -41,7 +41,9 @@ http.createServer((req, res) => {
         urlPath += 'index.html';
     }
     const filePath = path.join(ROOT, urlPath);
-    if (!filePath.startsWith(ROOT)) {
+    // Require an exact match or a separator boundary so sibling directories that
+    // merely share ROOT's name as a prefix (e.g. oipf-bbc-secret) can't be served.
+    if (filePath !== ROOT && !filePath.startsWith(ROOT + path.sep)) {
         res.writeHead(403);
         res.end('Forbidden');
         return;

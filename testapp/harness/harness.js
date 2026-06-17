@@ -35,6 +35,15 @@ window.harness = (function () {
     var inResult = false; // true while scrolling within the focused result's data
     var DATA_SCROLL_STEP_PX = 60;
 
+    // Successful setup() results, keyed by group id. Some library objects are
+    // single-instance per page load (e.g. only one VideoBroadcast view, one
+    // ApplicationManager) with no teardown API — so re-opening a group must
+    // reuse the object rather than reconstruct it (which would throw).
+    var setupCache = {};
+    // True while the results pane is showing a setup failure with a reload
+    // prompt; OK/Enter then reloads the page to reset the session.
+    var reloadPending = false;
+
     // ---- on-screen log (mirrors console) --------------------------------
 
     function appendLog(text, isError) {
@@ -201,6 +210,19 @@ window.harness = (function () {
         updateScrollHints('menuScroll', 'menuScrollUp', 'menuScrollDown');
     }
 
+    // Activates a manual (armed) case exactly once: clears the arm flag first so
+    // it can't double-fire from both a click and OK, then runs it. Returns true
+    // if a runner fired. Single source of truth for both activation paths.
+    function fireArmed(row) {
+        if (row && row.__armed) {
+            var runner = row.__armed;
+            row.__armed = null;
+            runner();
+            return true;
+        }
+        return false;
+    }
+
     function renderCase(name) {
         var row = document.createElement('div');
         row.className = 'caseRow';
@@ -257,11 +279,7 @@ window.harness = (function () {
                 showData('Manual test — press OK or click to run (this may exit the app).');
                 row.__armed = runner;
                 row.addEventListener('click', function () {
-                    if (row.__armed) {
-                        var fire = row.__armed;
-                        row.__armed = null;
-                        fire();
-                    }
+                    fireArmed(row);
                 });
             }
         };
@@ -283,6 +301,34 @@ window.harness = (function () {
         }
     }
 
+    // Shown when a group's setup() throws or yields no object — typically the
+    // single-instance conflict (only one VideoBroadcast view / ApplicationManager
+    // per page load). Renders the error plus a Reload prompt; OK/Enter or a click
+    // reloads the page so a different access type can be tried from a clean state.
+    function renderSetupFailure(err) {
+        renderCase('setup').settle(false, err || 'Object not available for this access type.');
+
+        var note = document.createElement('div');
+        note.className = 'reloadNote';
+        note.textContent =
+            'This object may be limited to one instance per page load. Reload to reset ' +
+            'the session and test a different access type.';
+
+        var button = document.createElement('div');
+        button.className = 'reloadButton';
+        button.textContent = '↻ Reload page';
+        button.addEventListener('click', function () {
+            window.location.reload();
+        });
+
+        var list = document.getElementById('resultsList');
+        list.appendChild(note);
+        list.appendChild(button);
+
+        reloadPending = true;
+        syncResultFocus();
+    }
+
     function runGroup(id) {
         var group = tests[id];
         if (!group) {
@@ -291,20 +337,33 @@ window.harness = (function () {
         pane = 'results';
         resultIndex = 0;
         inResult = false;
+        reloadPending = false;
         syncMenuFocus();
         document.getElementById('resultsTitle').textContent = group.label || id;
         document.getElementById('resultsList').innerHTML = '';
 
-        // Optional setup() runs once and yields a context passed to every case.
-        // A thrown setup is fatal for the group (one error row, cases skipped);
-        // a null/return value is handed to the cases to handle themselves.
+        // Optional setup() yields a context passed to every case. Its result is
+        // cached so re-opening a group reuses the same object (some library
+        // objects are single-instance per page load and would throw if rebuilt).
+        // If setup throws or yields no object — the cross-access conflict for
+        // single-instance features — show a reload prompt instead of the cases.
         var ctx;
         if (typeof group.setup === 'function') {
-            try {
-                ctx = group.setup();
-            } catch (err) {
-                renderCase('setup').settle(false, err);
-                syncResultFocus();
+            if (Object.prototype.hasOwnProperty.call(setupCache, id)) {
+                ctx = setupCache[id];
+            } else {
+                try {
+                    ctx = group.setup();
+                } catch (err) {
+                    renderSetupFailure(err);
+                    return;
+                }
+                if (ctx) {
+                    setupCache[id] = ctx;
+                }
+            }
+            if (!ctx) {
+                renderSetupFailure(null);
                 return;
             }
         }
@@ -355,6 +414,16 @@ window.harness = (function () {
 
     // Results pane: navigate between case rows (scrolls the page row-by-row).
     function handleResultKey(action) {
+        if (reloadPending) {
+            // Setup-failure state: OK reloads the page, Back returns to the menu.
+            if (action === 'select' || action === 'right') {
+                window.location.reload();
+            } else if (action === 'back') {
+                pane = 'menu';
+                syncMenuFocus();
+            }
+            return;
+        }
         if (action === 'down') {
             resultIndex = Math.min(resultIndex + 1, document.querySelectorAll('.caseRow').length - 1);
             syncResultFocus();
@@ -363,11 +432,8 @@ window.harness = (function () {
             syncResultFocus();
         } else if (action === 'select' || action === 'right') {
             var focusedRow = document.querySelectorAll('.caseRow')[resultIndex];
-            if (focusedRow && focusedRow.__armed) {
-                // Activate a manual (armed) case, once.
-                var fire = focusedRow.__armed;
-                focusedRow.__armed = null;
-                fire();
+            if (fireArmed(focusedRow)) {
+                // Activated a manual (armed) case.
             } else if (dataIsScrollable(focusedResultData())) {
                 // Otherwise scroll into this result if its data overflows.
                 inResult = true;
@@ -432,21 +498,72 @@ window.harness = (function () {
     }
 
     function fatal(message) {
+        // Only reached from loader.js before init() runs (the library never
+        // resolved), so the results list is still empty — just add a failed row
+        // via the shared builder rather than hand-rolling the markup.
         setStatus(message);
-        var results = document.getElementById('resultsList');
-        if (results) {
-            results.innerHTML = '<div class="caseRow"><div class="caseHead">' +
-                '<span class="badge fail">ERROR</span>' +
-                '<span class="caseName"></span></div></div>';
-            results.querySelector('.caseName').textContent = message;
-        }
+        renderCase(message).settle(false);
         appendLog(message, true);
+    }
+
+    // ---- test-registration helpers --------------------------------------
+    //
+    // These are harness primitives (not test data), so they live here and are
+    // defined before any test file runs — test files self-register against them
+    // regardless of <script> ordering. See the OIPF feature tests for usage:
+    //
+    //   bbc      — the window.bbc facade object
+    //   factory  — an object from window.oipfObjectFactory.createXObject()
+    //   dom      — a <object type="..."> resolved via the library's
+    //              document.getElementById override (auto-instantiation)
+
+    // Returns an accessor (a setup function) that creates a DOM <object> of the
+    // given type and resolves it through the factory's getElementById override.
+    // Recreates on each call (removing any prior node) to avoid DOM build-up.
+    function domObjectAccessor(type, id) {
+        return function () {
+            var existing = document.getElementById(id);
+            if (existing && existing.parentNode) {
+                existing.parentNode.removeChild(existing);
+            }
+            var obj = document.createElement('object');
+            obj.type = type;
+            obj.id = id;
+            document.body.appendChild(obj);
+            // May return null off-STB: the override swallows instantiation errors.
+            return document.getElementById(id);
+        };
+    }
+
+    var ACCESS_TYPES = [
+        { key: 'bbc', label: 'bbc' },
+        { key: 'factory', label: 'Factory' },
+        { key: 'dom', label: 'DOM' }
+    ];
+
+    // Registers one menu entry per access type for a feature. Each entry shares
+    // the same `cases`; its `setup` is the matching accessor, so the resolved
+    // object is created once and passed as the context to every case.
+    function registerOipfFeature(spec) {
+        ACCESS_TYPES.forEach(function (type) {
+            var accessor = spec.accessors[type.key];
+            if (!accessor) {
+                return;
+            }
+            tests[spec.key + '_' + type.key] = {
+                label: spec.label + ' — ' + type.label,
+                setup: accessor,
+                cases: spec.cases
+            };
+        });
     }
 
     return {
         tests: tests,
         init: init,
         fatal: fatal,
-        log: appendLog
+        log: appendLog,
+        domObjectAccessor: domObjectAccessor,
+        registerOipfFeature: registerOipfFeature
     };
 })();

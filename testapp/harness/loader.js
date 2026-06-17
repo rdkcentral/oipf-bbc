@@ -43,11 +43,6 @@
     }
 
     function loadLocal() {
-        if (librariesPresent()) {
-            // Already injected by something else; don't pull in a second copy.
-            start('local');
-            return;
-        }
         var script = document.createElement('script');
         script.src = LIB_SRC;
         script.onload = function () {

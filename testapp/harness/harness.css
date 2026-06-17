@@ -205,6 +205,23 @@ body {
     outline-offset: 2px;
 }
 
+/* Setup-failure reload prompt (single-instance conflict). */
+.reloadNote {
+    margin-bottom: 18px;
+    color: #9aa6b5;
+    font-size: 20px;
+}
+
+.reloadButton {
+    display: inline-block;
+    padding: 14px 28px;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 22px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
 .caseHead {
     display: flex;
     align-items: center;
@@ -256,6 +273,33 @@ body {
     word-break: break-word;
     max-height: 300px;
     overflow: auto;
+    /* Keep a prominent scrollbar here (unlike the panes): it's the cue that a
+       result has more content to scroll through in the in-result scroll mode. */
+    scrollbar-width: auto; /* Firefox */
+    scrollbar-color: #3b6fe0 #1b212b;
+}
+
+.caseData::-webkit-scrollbar {
+    width: 14px;
+}
+
+.caseData::-webkit-scrollbar-track {
+    background: #1b212b;
+    border-radius: 7px;
+}
+
+.caseData::-webkit-scrollbar-thumb {
+    background: #3b6fe0;
+    border-radius: 7px;
+}
+
+/* Brighten the scrollbar while this result is the active scroll target. */
+.caseRow.scrolling .caseData {
+    scrollbar-color: #5b8def #1b212b;
+}
+
+.caseRow.scrolling .caseData::-webkit-scrollbar-thumb {
+    background: #5b8def;
 }
 
 #logPane {
