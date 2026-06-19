@@ -220,7 +220,7 @@ window.Harness.createController = function (deps) {
     function init(env) {
         logView.captureConsole();
         pane = 'menu';
-        // All test files have registered by now; add the "▶ Run all tests" entry.
+        // All test files have registered by now; add the "» Run all tests" entry.
         tree.buildRunAllMenu();
         levels = [{ node: tree.root, savedFocus: 0 }];
         renderMenu();
