@@ -42,6 +42,15 @@ http.createServer((req, res) => {
     if (urlPath.endsWith('/')) {
         urlPath += 'index.html';
     }
+    // Allow-list the request path before it touches the filesystem: only safe URL
+    // characters, and no ".." segment. This is the primary guard (the realpath +
+    // root-boundary check below is defence-in-depth) and rejects path traversal
+    // outright rather than relying on normalisation.
+    if (!/^\/[\w./-]*$/.test(urlPath) || /(^|\/)\.\.(\/|$)/.test(urlPath)) {
+        res.writeHead(400, { 'Content-Type': 'text/plain' });
+        res.end('Bad request');
+        return;
+    }
     // Resolve the real on-disk path: collapses ".." AND follows symlinks, so a
     // symlink inside ROOT pointing outside it can't escape (a textual check would
     // miss that). realpathSync throws for a missing file → treat as 404. urlPath is
