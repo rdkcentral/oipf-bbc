@@ -96,10 +96,14 @@ window.Harness.createPopupView = function () {
         }
         row.appendChild(text);
 
+        // Stick to the bottom only if the user is already there — don't yank them
+        // back down while they're scrolled up reading an earlier result mid-run.
+        var atBottom = scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 4;
         listEl.appendChild(row);
         refreshSummary();
-        // Keep the latest result in view while running (log-style auto-scroll).
-        scrollEl.scrollTop = scrollEl.scrollHeight;
+        if (atBottom) {
+            scrollEl.scrollTop = scrollEl.scrollHeight;
+        }
         updateHints();
     }
 

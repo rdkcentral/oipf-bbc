@@ -47,6 +47,12 @@ window.Harness.updateScrollHints = function (scrollerId, upId, downId) {
     }
     var atTop = scroller.scrollTop <= 0;
     var atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
-    document.getElementById(upId).classList.toggle('visible', !atTop);
-    document.getElementById(downId).classList.toggle('visible', !atBottom);
+    var up = document.getElementById(upId);
+    var down = document.getElementById(downId);
+    if (up) {
+        up.classList.toggle('visible', !atTop);
+    }
+    if (down) {
+        down.classList.toggle('visible', !atBottom);
+    }
 };

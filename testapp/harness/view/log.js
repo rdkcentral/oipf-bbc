@@ -35,16 +35,11 @@ window.Harness.createLogView = function () {
     }
 
     function stringifyArgs(args) {
+        // Use the shared formatter so Errors render as name/message rather than the
+        // bare "{}" that JSON.stringify produces for them.
         return Array.prototype.map
             .call(args, function (a) {
-                if (typeof a === 'string') {
-                    return a;
-                }
-                try {
-                    return JSON.stringify(a);
-                } catch (e) {
-                    return String(a);
-                }
+                return window.Harness.pretty(a);
             })
             .join(' ');
     }

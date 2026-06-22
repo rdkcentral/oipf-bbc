@@ -56,15 +56,28 @@ function minifyCss(css) {
 async function main() {
     const html = fs.readFileSync(path.join(APP, 'index.html'), 'utf8');
 
-    // 1. Script load order — straight from index.html.
+    // 1. Script load order — straight from index.html. Tolerate other attributes
+    //    and either quote style, then assert we captured every <script> tag so a
+    //    tag we can't parse (or an inline script) fails the build loudly instead of
+    //    being silently dropped from the bundle. Scan comment-stripped HTML so a
+    //    literal "<script>" mentioned in a comment doesn't skew the count.
+    const scannable = html.replace(/<!--[\s\S]*?-->/g, '');
     const srcs = [];
-    const re = /<script src="([^"]+)"><\/script>/g;
+    const re = /<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*><\/script>/gi;
     let m;
-    while ((m = re.exec(html))) {
+    while ((m = re.exec(scannable))) {
         srcs.push(m[1]);
     }
     if (!srcs.length) {
         throw new Error('No <script src> tags found in testapp/index.html');
+    }
+    const scriptTagCount = (scannable.match(/<script\b/gi) || []).length;
+    if (srcs.length !== scriptTagCount) {
+        throw new Error(
+            'index.html has ' + scriptTagCount + ' <script> tags but only ' + srcs.length +
+            ' parsed as src bundles — an inline or unrecognised <script> would be dropped from ' +
+            'the bundle. Update scripts/build-testapp.js to handle it.'
+        );
     }
 
     // 2. Concatenate (leading ; between files guards against ASI surprises).

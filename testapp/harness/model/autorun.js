@@ -38,18 +38,21 @@ window.Harness.createAutoRunner = function (deps) {
         return out;
     }
 
-    // Counts up front so progress has a denominator. N/A leaves contribute nothing;
-    // manual cases are skipped (and counted separately).
+    // Single traversal that produces the run plan: the runnable leaves plus the
+    // counts (total non-manual cases as the progress denominator; manual + N/A
+    // skipped). The sole source of truth for "what runs" — run() consumes this.
     function collect(scope) {
         var total = 0;
         var manualSkipped = 0;
         var naCount = 0;
+        var leaves = [];
         leavesUnder(scope).forEach(function (leaf) {
             var group = leaf.group;
             if (!group.cases) {
                 naCount++; // naMessage leaf (or no cases)
                 return;
             }
+            leaves.push(leaf);
             group.cases.forEach(function (testCase) {
                 if (testCase.manual) {
                     manualSkipped++;
@@ -58,17 +61,15 @@ window.Harness.createAutoRunner = function (deps) {
                 }
             });
         });
-        return { total: total, manualSkipped: manualSkipped, naCount: naCount };
+        return { total: total, manualSkipped: manualSkipped, naCount: naCount, leaves: leaves };
     }
 
-    // Runs the scope sequentially, calling onResult({ index, total, path, name, ok,
-    // value }) as each case settles. Resolves with summary counts. Never rejects.
-    function run(scope, onResult) {
-        var stats = collect(scope);
-        var total = stats.total;
-        var leaves = leavesUnder(scope).filter(function (leaf) {
-            return !!leaf.group.cases;
-        });
+    // Runs a plan (from collect()) sequentially, calling onResult({ index, total,
+    // path, name, ok, value }) as each case settles. Resolves with summary counts.
+    // Never rejects.
+    function run(plan, onResult) {
+        var total = plan.total;
+        var leaves = plan.leaves;
 
         var passed = 0;
         var failed = 0;
@@ -85,8 +86,8 @@ window.Harness.createAutoRunner = function (deps) {
                     total: total,
                     passed: passed,
                     failed: failed,
-                    manualSkipped: stats.manualSkipped,
-                    naCount: stats.naCount
+                    manualSkipped: plan.manualSkipped,
+                    naCount: plan.naCount
                 });
             }
 

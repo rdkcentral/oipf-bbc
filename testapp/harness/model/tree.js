@@ -131,17 +131,21 @@ window.Harness.createTree = function () {
     // one autorun leaf per existing top-level category. Each leaf's group carries
     // { autorun: categoryNode } — the controller runs that subtree instead of
     // opening it. Call once after all test files have registered (e.g. in init).
+    var RUN_ALL_LABEL = '» Run all tests';
     function buildRunAllMenu() {
+        if (root.index[RUN_ALL_LABEL]) {
+            return;
+        }
         var categories = root.children.slice(); // snapshot before adding the branch
         if (!categories.length) {
             return;
         }
-        var branch = childNode(root, '» Run all tests');
+        var branch = childNode(root, RUN_ALL_LABEL);
         branch.caption = 'Choose a test area to run automatically; results appear in a popup.';
         categories.forEach(function (category) {
             var leaf = childNode(branch, category.label);
             leaf.group = { autorun: category };
-            leaf.id = '» Run all tests / ' + category.label;
+            leaf.id = RUN_ALL_LABEL + ' / ' + category.label;
             leaf.subtitle = 'Every non-manual test under ' + category.label;
         });
         // Move the branch to the front of the root list for prominence.

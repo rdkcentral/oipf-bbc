@@ -30,16 +30,15 @@ window.Harness.createController = function (deps) {
     var resultView = deps.resultView;
     var popupView = deps.popupView;
 
-    // Map raw key codes to semantic actions in one place: browser arrows/enter
-    // plus common STB codes (Back is 8/461, joining Left). Enter ('select') and
-    // Right are kept distinct because Right enters a result but does not exit one.
+    // Map raw key codes to semantic actions in one place
     var KEY_ACTIONS = {
         40: 'down',
         38: 'up',
         13: 'select',
         39: 'right',
-        37: 'back',
+        37: 'left',
         8: 'back',
+        27: 'back', // Esc on desktop; the Back key on our STB environment
         461: 'back'
     };
 
@@ -93,8 +92,8 @@ window.Harness.createController = function (deps) {
             menuView.focusUp();
         } else if (action === 'select' || action === 'right') {
             selectFocused();
-        } else if (action === 'back') {
-            // Pop a drill-down level; no-op at the root.
+        } else if (action === 'back' || action === 'left') {
+            // Left or Back pops a drill-down level; no-op at the root.
             if (levels.length > 1) {
                 levels.pop();
                 renderMenu();
@@ -153,10 +152,10 @@ window.Harness.createController = function (deps) {
     // modal popup. The run can't be cancelled (Back is inert until it completes).
     function startAutorun(scope, label) {
         pane = 'popup';
-        var stats = autoRunner.collect(scope);
-        popupView.open(label, stats.total);
+        var plan = autoRunner.collect(scope); // one traversal; the denominator + run plan
+        popupView.open(label, plan.total);
         autoRunner
-            .run(scope, function (entry) {
+            .run(plan, function (entry) {
                 popupView.addEntry(entry);
             })
             .then(function (summary) {
@@ -185,7 +184,7 @@ window.Harness.createController = function (deps) {
                 resultView.scrollData(1);
             } else if (action === 'up') {
                 resultView.scrollData(-1);
-            } else if (action === 'back' || action === 'select') {
+            } else if (action === 'back' || action === 'left' || action === 'select') {
                 resultView.exitData();
             }
             return;
@@ -196,7 +195,7 @@ window.Harness.createController = function (deps) {
             resultView.focusUp();
         } else if (action === 'select' || action === 'right') {
             resultView.activateFocused();
-        } else if (action === 'back') {
+        } else if (action === 'back' || action === 'left') {
             exitToMenu();
         }
     }
