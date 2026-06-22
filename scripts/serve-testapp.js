@@ -25,7 +25,9 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = path.resolve(__dirname, '..');
+// realpath so the served-root comparison is consistent with realpath'd request
+// paths below (e.g. on macOS where /tmp resolves to /private/tmp).
+const ROOT = fs.realpathSync(path.resolve(__dirname, '..'));
 const PORT = process.env.PORT || 8137;
 
 const TYPES = {
@@ -40,18 +42,31 @@ http.createServer((req, res) => {
     if (urlPath.endsWith('/')) {
         urlPath += 'index.html';
     }
-    const filePath = path.join(ROOT, urlPath);
+    // Resolve the real on-disk path: collapses ".." AND follows symlinks, so a
+    // symlink inside ROOT pointing outside it can't escape (a textual check would
+    // miss that). realpathSync throws for a missing file → treat as 404. urlPath is
+    // made relative ('.' + ...) so an absolute-looking request doesn't bypass ROOT.
+    let filePath;
+    try {
+        filePath = fs.realpathSync(path.resolve(ROOT, '.' + urlPath));
+    } catch (e) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Not found');
+        return;
+    }
     // Require an exact match or a separator boundary so sibling directories that
     // merely share ROOT's name as a prefix (e.g. oipf-bbc-secret) can't be served.
     if (filePath !== ROOT && !filePath.startsWith(ROOT + path.sep)) {
-        res.writeHead(403);
+        res.writeHead(403, { 'Content-Type': 'text/plain' });
         res.end('Forbidden');
         return;
     }
     fs.readFile(filePath, (err, data) => {
         if (err) {
-            res.writeHead(404);
-            res.end('Not found: ' + urlPath);
+            // Plain text and no reflected path — don't let the request value be
+            // sniffed as HTML (reflected-XSS).
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end('Not found');
             return;
         }
         res.writeHead(200, { 'Content-Type': TYPES[path.extname(filePath)] || 'application/octet-stream' });
