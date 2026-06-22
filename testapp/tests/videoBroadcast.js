@@ -84,6 +84,12 @@
                     if (typeof vb.addEventListener !== 'function') {
                         return 'no EventTarget interface on this access type (expected for the bbc facade)';
                     }
+                    // The resolved object is cached, so reopening this group re-runs
+                    // the case — attach only once to avoid stacking duplicate listeners.
+                    if (vb.__playStateLogged) {
+                        return 'Listener already attached; PlayStateChange events appear in the Log pane.';
+                    }
+                    vb.__playStateLogged = true;
                     vb.addEventListener('PlayStateChange', function (e) {
                         harness.log('PlayStateChange -> state=' + (e && e.state));
                     });

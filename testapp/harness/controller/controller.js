@@ -205,6 +205,7 @@ window.Harness.createController = function (deps) {
         if (!action) {
             return;
         }
+        e.preventDefault();
         if (pane === 'popup') {
             handlePopupKey(action);
         } else if (pane === 'menu') {

@@ -38,7 +38,15 @@ const TYPES = {
 };
 
 http.createServer((req, res) => {
-    let urlPath = decodeURIComponent(req.url.split('?')[0]);
+    let urlPath;
+    try {
+        urlPath = decodeURIComponent(req.url.split('?')[0]);
+    } catch (e) {
+        // Malformed percent-encoding (e.g. "/%E0") — don't let it crash the server.
+        res.writeHead(400, { 'Content-Type': 'text/plain' });
+        res.end('Bad request');
+        return;
+    }
     if (urlPath.endsWith('/')) {
         urlPath += 'index.html';
     }

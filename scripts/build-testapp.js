@@ -61,10 +61,10 @@ async function main() {
     //    other attributes and either quote style. The testapp uses only external
     //    <script src> modules; an inline script isn't bundled and would surface
     //    immediately at runtime / via `npm run validate:testapp`.
+    const scriptTagRe = /[ \t]*<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*><\/script>[ \t]*\r?\n?/gi;
     const srcs = [];
-    const re = /<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*><\/script>/gi;
     let m;
-    while ((m = re.exec(html))) {
+    while ((m = scriptTagRe.exec(html))) {
         srcs.push(m[1]);
     }
     if (!srcs.length) {
@@ -101,7 +101,7 @@ async function main() {
 
     // 5. Generated index.html: one bundle script, minified CSS, same markup.
     const builtHtml = html
-        .replace(/[ \t]*<script src="[^"]+"><\/script>\n/g, '')
+        .replace(scriptTagRe, '')
         .replace('</body>', '        <script src="testapp.bundle.js"></script>\n    </body>')
         .replace('href="harness/harness.css"', 'href="testapp.css"');
     fs.writeFileSync(path.join(OUT, 'index.html'), builtHtml);

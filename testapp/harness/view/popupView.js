@@ -58,6 +58,7 @@ window.Harness.createPopupView = function () {
         refreshSummary();
         scrollEl.scrollTop = 0;
         overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false'); // visible — expose to assistive tech
         updateHints();
     }
 
@@ -128,6 +129,7 @@ window.Harness.createPopupView = function () {
 
     function close() {
         overlay.classList.remove('open');
+        overlay.setAttribute('aria-hidden', 'true'); // hidden — remove from accessibility tree
     }
 
     return {
