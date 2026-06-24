@@ -23,12 +23,15 @@
  * artifact for deployment. The script order is read from index.html so the bundle
  * can never drift from the dev load order.
  *
- *   node scripts/build-testapp.js   (also: npm run build:testapp)
+ *   node scripts/build-testapp.js              (also: npm run build:testapp)
+ *   node scripts/build-testapp.js --with-lib  (copy dist/stb/ into output — npm run build:testapp:dev)
  */
 const fs = require('fs');
 const path = require('path');
 const tar = require('tar');
 const { minify } = require('terser');
+
+const withLib = process.argv.indexOf('--with-lib') !== -1;
 
 const ROOT = path.resolve(__dirname, '..');
 const APP = path.join(ROOT, 'testapp');
@@ -76,7 +79,10 @@ async function main() {
         .map(function (src) {
             return '// ' + src + '\n' + fs.readFileSync(path.join(APP, src), 'utf8');
         })
-        .join('\n;\n');
+        .join('\n;\n')
+        // Rewrite the loader's dev-relative library path so it resolves correctly
+        // when the built app is served flat from dist/ or deployed via tarball.
+        .replace("'../dist/stb/oipf-bbc.js'", "'stb/oipf-bbc.js'");
 
     // 3. Minify JS.
     const result = await minify(concatenated, {
@@ -107,19 +113,21 @@ async function main() {
     fs.writeFileSync(path.join(OUT, 'index.html'), builtHtml);
 
     // 6. Copy the library so the artifact is self-contained (loader's relative
-    //    ../dist/stb path resolves to OUT/stb here). Optional — auto mode doesn't
-    //    need it (the platform injects the library).
-    const libJs = path.join(ROOT, 'dist/stb/oipf-bbc.js');
-    const libCss = path.join(ROOT, 'dist/stb/oipf-bbc.css');
-    if (fs.existsSync(libJs)) {
-        fs.mkdirSync(path.join(OUT, 'stb'), { recursive: true });
-        fs.copyFileSync(libJs, path.join(OUT, 'stb/oipf-bbc.js'));
-        if (fs.existsSync(libCss)) {
-            fs.copyFileSync(libCss, path.join(OUT, 'stb/oipf-bbc.css'));
+    //    stb/ path resolves to OUT/stb here). Optional — auto mode doesn't need it
+    //    (the platform injects the library). Skip with --no-lib.
+    if (withLib) {
+        const libJs = path.join(ROOT, 'dist/stb/oipf-bbc.js');
+        const libCss = path.join(ROOT, 'dist/stb/oipf-bbc.css');
+        if (fs.existsSync(libJs)) {
+            fs.mkdirSync(path.join(OUT, 'stb'), { recursive: true });
+            fs.copyFileSync(libJs, path.join(OUT, 'stb/oipf-bbc.js'));
+            if (fs.existsSync(libCss)) {
+                fs.copyFileSync(libCss, path.join(OUT, 'stb/oipf-bbc.css'));
+            }
+        } else {
+            console.warn('Note: dist/stb/oipf-bbc.js not found — run `npm run build` first, ' +
+                'then `npm run build:testapp:dev` for a fully self-contained artifact.');
         }
-    } else {
-        console.warn('Note: dist/stb/oipf-bbc.js not found — run `npm run build` for a fully ' +
-            'self-contained artifact, or deploy where the platform injects the library (auto mode).');
     }
 
     // 7. Tarball inside dist/, containing just the app files flat (no library, no

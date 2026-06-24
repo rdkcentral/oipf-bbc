@@ -12,7 +12,8 @@
         "test": "NODE_PATH=./lib mocha",
         "serve:testapp": "node scripts/serve-testapp.js",
         "validate:testapp": "node scripts/validate-testapp.js",
-        "build:testapp": "node scripts/build-testapp.js"
+        "build:testapp": "node scripts/build-testapp.js",
+        "build:testapp:dev": "node scripts/build-testapp.js --with-lib"
     },
     "author": "Infosys",
     "license": "Apache-2.0",
