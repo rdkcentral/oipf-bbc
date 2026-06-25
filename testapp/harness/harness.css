@@ -1,0 +1,475 @@
+/*
+ * Copyright (c) 2026 Infosys
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* 10-foot "lean back" layout sized for a 1920x1080 STB surface. */
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: #11151c;
+    color: #e6e9ef;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 28px;
+    overflow: hidden;
+}
+
+#appHeader {
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    background: #1b212b;
+    border-bottom: 2px solid #2c3440;
+}
+
+#appTitle {
+    font-weight: bold;
+    font-size: 34px;
+}
+
+#appStatus {
+    font-size: 22px;
+    color: #9aa6b5;
+}
+
+#appBody {
+    display: flex;
+    height: calc(100% - 80px - 220px);
+}
+
+#menu {
+    --pane-bg: #161b23;
+    position: relative;
+    width: 440px;
+    flex: 0 0 440px;
+    background: #161b23;
+    border-right: 2px solid #2c3440;
+    outline: none;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Drill-down path (Home › bbc › …) above the menu list. */
+#menuBreadcrumb {
+    flex: 0 0 auto;
+    padding: 14px 32px 8px;
+    font-size: 18px;
+    color: #9aa6b5;
+}
+
+/* Help text for the current level (hidden when the level has none). */
+#menuCaption {
+    flex: 0 0 auto;
+    padding: 0 32px 14px;
+    font-size: 16px;
+    line-height: 1.35;
+    color: #7e8a99;
+    border-bottom: 1px solid #222a35;
+}
+
+/* Scrolling viewport (menu + results + popup): positioning context for hints. */
+#menuViewport,
+#resultsViewport,
+#popupViewport {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* Scrollers hide their scrollbar — the up/down hints convey off-screen content. */
+#menuScroll,
+#resultsScroll,
+#popupScroll {
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* legacy Edge/IE */
+}
+
+#menuScroll::-webkit-scrollbar,
+#resultsScroll::-webkit-scrollbar,
+#popupScroll::-webkit-scrollbar {
+    display: none; /* WebKit (STB browsers) */
+}
+
+/* Edge hints fade into the owning pane's background (--pane-bg, set per pane). */
+#menuScrollUp,
+#scrollUp,
+#popupScrollUp {
+    top: 0;
+    background: linear-gradient(to bottom, var(--pane-bg) 30%, transparent);
+}
+
+#menuScrollDown,
+#scrollDown,
+#popupScrollDown {
+    bottom: 0;
+    background: linear-gradient(to top, var(--pane-bg) 30%, transparent);
+}
+
+.menuItem {
+    padding: 22px 32px;
+    cursor: pointer;
+    border-bottom: 1px solid #222a35;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Stacks the label over its optional subtitle. */
+.menuItemText {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Second line under a menu item (e.g. what an interface means). */
+.menuSubtitle {
+    margin-top: 4px;
+    font-size: 16px;
+    color: #9aa6b5;
+}
+
+/* Keep the subtitle legible on the blue focused background. */
+.menuItem.focused .menuSubtitle {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* Drill-in affordance shown on branch items. */
+.menuChevron {
+    margin-left: 16px;
+    color: #9aa6b5;
+}
+
+.menuItem.focused .menuChevron {
+    color: #ffffff;
+}
+
+.menuItem.focused {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+/* When the results pane holds true focus, the menu shows a "ghosted" marker on
+   the item that will regain focus — visibly not the active pane. */
+.menuItem.focused.ghosted {
+    background: transparent;
+    color: #e6e9ef;
+    box-shadow: inset 4px 0 0 #2563eb;
+    outline: 1px dashed #3b6fe0;
+    outline-offset: -1px;
+}
+
+#results {
+    --pane-bg: #11151c;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 24px 32px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Fixed header above the scrolling viewport. */
+#resultsTitle {
+    flex: 0 0 auto;
+    margin: 0 0 24px;
+    padding-bottom: 4px;
+    font-size: 30px;
+    display: inline-block;
+    align-self: flex-start;
+    border-bottom: 4px solid transparent;
+}
+
+/* When the results pane holds true focus, underline its title. */
+#resultsTitle.focused {
+    border-bottom-color: #2563eb;
+}
+
+/* "More above / below" indicators, anchored to the viewport edges and faded in
+   only when there is off-screen content in that direction. (Menu + results
+   viewport/scroller/gradient rules are shared up in the menu section.) */
+.scrollHint {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #cfd6df;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.scrollHint.visible {
+    opacity: 1;
+}
+
+.caseRow {
+    margin-bottom: 18px;
+    padding: 18px 22px;
+    background: #161b23;
+    border: 1px solid #2c3440;
+    border-radius: 6px;
+}
+
+/* Focused result row (Up/Down navigates rows while the results pane is active). */
+.caseRow.focused {
+    border-color: #2563eb;
+    box-shadow: inset 4px 0 0 #2563eb;
+}
+
+/* While scrolling inside a result, highlight its data block as the active target. */
+.caseRow.scrolling .caseData {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+/* Setup-failure reload prompt (single-instance conflict). */
+.reloadNote {
+    margin-bottom: 18px;
+    color: #9aa6b5;
+    font-size: 20px;
+}
+
+.reloadButton {
+    display: inline-block;
+    padding: 14px 28px;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 22px;
+    border: 3px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.reloadButton.focused {
+    background: #3b6fe0;
+    border-color: #ffffff;
+}
+
+.caseHead {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.badge {
+    flex: 0 0 auto;
+    padding: 4px 14px;
+    border-radius: 4px;
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.badge.pass {
+    background: #16a34a;
+    color: #ffffff;
+}
+
+.badge.fail {
+    background: #dc2626;
+    color: #ffffff;
+}
+
+.badge.running {
+    background: #ca8a04;
+    color: #ffffff;
+}
+
+/* Manual case: not run automatically; awaits explicit OK/click activation. */
+.badge.manual {
+    background: #7c3aed;
+    color: #ffffff;
+}
+
+.caseName {
+    font-size: 24px;
+}
+
+.caseData {
+    margin: 14px 0 0;
+    padding: 14px;
+    background: #0d1117;
+    border-radius: 4px;
+    font-family: "Courier New", monospace;
+    font-size: 18px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 300px;
+    overflow: auto;
+    /* Keep a prominent scrollbar here (unlike the panes): it's the cue that a
+       result has more content to scroll through in the in-result scroll mode. */
+    scrollbar-width: auto; /* Firefox */
+    scrollbar-color: #3b6fe0 #1b212b;
+}
+
+.caseData::-webkit-scrollbar {
+    width: 14px;
+}
+
+.caseData::-webkit-scrollbar-track {
+    background: #1b212b;
+    border-radius: 7px;
+}
+
+.caseData::-webkit-scrollbar-thumb {
+    background: #3b6fe0;
+    border-radius: 7px;
+}
+
+/* Brighten the scrollbar while this result is the active scroll target. */
+.caseRow.scrolling .caseData {
+    scrollbar-color: #5b8def #1b212b;
+}
+
+.caseRow.scrolling .caseData::-webkit-scrollbar-thumb {
+    background: #5b8def;
+}
+
+#logPane {
+    height: 220px;
+    border-top: 2px solid #2c3440;
+    background: #0d1117;
+    display: flex;
+    flex-direction: column;
+}
+
+#logHeader {
+    padding: 6px 32px;
+    font-size: 18px;
+    color: #9aa6b5;
+    background: #161b23;
+}
+
+#logList {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 8px 32px;
+    font-family: "Courier New", monospace;
+    font-size: 17px;
+}
+
+.logLine {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.logLine.error {
+    color: #f87171;
+}
+
+/* ---- Autorun report popup -------------------------------------------- */
+
+.popup {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.popup.open {
+    display: flex;
+}
+
+.popupPanel {
+    --pane-bg: #161b23;
+    width: 72%;
+    max-width: 1400px;
+    height: 80%;
+    background: #161b23;
+    border: 2px solid #2c3440;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+}
+
+.popupHeader {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 28px;
+    border-bottom: 2px solid #2c3440;
+    font-size: 26px;
+    font-weight: bold;
+}
+
+#popupSummary {
+    font-size: 20px;
+    font-weight: normal;
+    color: #9aa6b5;
+}
+
+#popupScroll {
+    padding: 12px 28px;
+}
+
+.popupFooter {
+    flex: 0 0 auto;
+    padding: 14px 28px;
+    border-top: 1px solid #2c3440;
+    font-size: 18px;
+    color: #9aa6b5;
+}
+
+.popupEntry {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid #1f2730;
+}
+
+.popupEntryText {
+    display: flex;
+    flex-direction: column;
+}
+
+.popupPath {
+    font-size: 15px;
+    color: #9aa6b5;
+}
+
+.popupName {
+    font-size: 18px;
+}
+
+.popupEntry.fail .popupName {
+    color: #f87171;
+}
+
+.popupDetail {
+    margin-top: 6px;
+    font-family: "Courier New", monospace;
+    font-size: 15px;
+    color: #cbd3dd;
+    white-space: pre-wrap;
+    word-break: break-word;
+}

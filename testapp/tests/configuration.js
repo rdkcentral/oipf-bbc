@@ -1,0 +1,55 @@
+/*
+ * Copyright (c) 2026 Infosys
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * Configuration feature, exercised via bbc / factory / DOM. The common member
+ * across all three access types is the `configuration` property.
+ */
+(function () {
+    harness.register({
+        path: [harness.INTERFACE, 'Configuration'],
+        accessors: {
+            bbc: function () {
+                return bbc.oipfConfiguration;
+            },
+            factory: function () {
+                return oipfObjectFactory.createConfigurationObject();
+            },
+            dom: harness.domObjectAccessor('application/oipfConfiguration', 'ta-configuration')
+        },
+        cases: [
+            {
+                name: 'exposes the configuration property',
+                run: function (cfg) {
+                    if (!cfg) {
+                        throw new Error('object not available (accessor returned null)');
+                    }
+                    if (!('configuration' in cfg)) {
+                        throw new Error('missing property: configuration');
+                    }
+                    return 'configuration property present';
+                }
+            },
+            {
+                name: 'configuration (snapshot)',
+                run: function (cfg) {
+                    // Populated asynchronously from Firebolt during init; read current snapshot.
+                    return cfg.configuration;
+                }
+            }
+        ]
+    });
+})();

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<!--
+  Copyright (c) 2026 Infosys
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width">
+        <title>oipf-bbc integration test app</title>
+        <link rel="stylesheet" type="text/css" href="harness/harness.css">
+    </head>
+    <body>
+        <header id="appHeader">
+            <span id="appTitle">oipf-bbc test app</span>
+            <span id="appStatus">loading&hellip;</span>
+        </header>
+
+        <main id="appBody">
+            <nav id="menu" tabindex="0">
+                <div id="menuBreadcrumb"></div>
+                <div id="menuCaption"></div>
+                <div id="menuViewport">
+                    <div id="menuScroll"></div>
+                    <div id="menuScrollUp" class="scrollHint" aria-hidden="true">&#9650;</div>
+                    <div id="menuScrollDown" class="scrollHint" aria-hidden="true">&#9660;</div>
+                </div>
+            </nav>
+            <section id="results">
+                <h2 id="resultsTitle">Select a test group</h2>
+                <div id="resultsViewport">
+                    <div id="resultsScroll">
+                        <div id="resultsList"></div>
+                    </div>
+                    <div id="scrollUp" class="scrollHint" aria-hidden="true">&#9650;</div>
+                    <div id="scrollDown" class="scrollHint" aria-hidden="true">&#9660;</div>
+                </div>
+            </section>
+        </main>
+
+        <section id="logPane">
+            <div id="logHeader">Log</div>
+            <div id="logList"></div>
+        </section>
+
+        <!-- Autorun report (modal overlay, hidden until a "Run all" is started). -->
+        <div id="popup" class="popup" aria-hidden="true">
+            <div class="popupPanel">
+                <div class="popupHeader">
+                    <span id="popupTitle"></span>
+                    <span id="popupSummary"></span>
+                </div>
+                <div id="popupViewport">
+                    <div id="popupScroll">
+                        <div id="popupList"></div>
+                    </div>
+                    <div id="popupScrollUp" class="scrollHint" aria-hidden="true">&#9650;</div>
+                    <div id="popupScrollDown" class="scrollHint" aria-hidden="true">&#9660;</div>
+                </div>
+                <div id="popupFooter" class="popupFooter"></div>
+            </div>
+        </div>
+
+        <!--
+            The library is intentionally NOT loaded with a static <script> tag here.
+            harness/loader.js decides whether to inject the local ../dist/stb/oipf-bbc.js
+            copy or bind to a platform-injected (auto-loaded) instance. See the plan /
+            the loader source for the two supported environments.
+        -->
+        <script src="harness/util.js"></script>
+        <script src="harness/model/tree.js"></script>
+        <script src="harness/model/runner.js"></script>
+        <script src="harness/model/autorun.js"></script>
+        <script src="harness/view/log.js"></script>
+        <script src="harness/view/menuView.js"></script>
+        <script src="harness/view/resultView.js"></script>
+        <script src="harness/view/popupView.js"></script>
+        <script src="harness/controller/controller.js"></script>
+        <script src="harness/harness.js"></script>
+        <!-- Registration order sets menu order: interface features first (so the
+             top level is bbc / Factory / DOM), then the global onesdk category. -->
+        <script src="tests/configuration.js"></script>
+        <script src="tests/applicationManager.js"></script>
+        <script src="tests/videoBroadcast.js"></script>
+        <script src="tests/displayInfo.js"></script>
+        <script src="harness/loader.js"></script>
+    </body>
+</html>
