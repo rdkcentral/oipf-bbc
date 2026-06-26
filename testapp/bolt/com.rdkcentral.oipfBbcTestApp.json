@@ -1,0 +1,33 @@
+{
+  "id": "com.rdkcentral.oipfBbcTestApp",
+  "version": "0.1.2",
+  "versionName": "develop",
+  "name": "OIPF BBC Integration Test App",
+  "packageType": "application",
+  "entryPoint": "--verbose --dev file:///usr/share/com.rdkcentral.oipfBbcTestApp/index.html",
+  "dependencies": {
+    "com.rdkcentral.wpe": "~0.3.1"
+  },
+  "permissions": [
+    "urn:rdk:permission:internet",
+    "urn:rdk:permission:firebolt",
+    "urn:rdk:permission:thunder",
+    "urn:rdk:permission:rialto"
+  ],
+  "configuration": {
+    "urn:rdk:config:overrides": {
+      "application": {
+        "options": [
+          {
+              "key": "userscripts",
+              "value": "/usr/share/com.rdkcentral.oipfBbcTestApp/oipf-bbc.js"
+          },
+          {
+              "key": "userstylesheets",
+              "value": "/usr/share/com.rdkcentral.oipfBbcTestApp/oipf-bbc.css"
+          }
+        ]
+      }
+    }
+  }
+}
