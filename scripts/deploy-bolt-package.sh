@@ -51,7 +51,7 @@ echo ""
 # ─── Helper ───────────────────────────────────────────────────────────────────
 
 jsonrpc() {
-    curl -X POST "$JSONRPC_URL" \
+    curl -fsS -X POST "$JSONRPC_URL" \
         --header 'Content-Type: application/json' \
         --data "$1"
 }
