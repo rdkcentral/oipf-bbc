@@ -19,12 +19,12 @@
       "application": {
         "options": [
           {
-              "key": "userscripts",
-              "value": "/usr/share/com.rdkcentral.oipfBbcTestApp/oipf-bbc.js"
+            "key": "userscripts",
+            "value": "/usr/share/com.rdkcentral.oipfBbcTestApp/oipf-bbc.js"
           },
           {
-              "key": "userstylesheets",
-              "value": "/usr/share/com.rdkcentral.oipfBbcTestApp/oipf-bbc.css"
+            "key": "userstylesheets",
+            "value": "/usr/share/com.rdkcentral.oipfBbcTestApp/oipf-bbc.css"
           }
         ]
       }
