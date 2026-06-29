@@ -22,3 +22,9 @@ const { WebSocket } = require('mock-socket');
 
 // websockets.js uses `new WebSocket(url)` and the WebSocket.CLOSING/CLOSED constants.
 global.WebSocket = WebSocket;
+
+// websockets.js resolves the live Firebolt URL from window.__firebolt.endpoint
+// at connection time. Provide a default global; individual tests can override
+// window.__firebolt.endpoint to point at their mock server.
+global.window = global.window || {};
+global.window.__firebolt = { endpoint: 'ws://127.0.0.1:9998/jsonrpc' };

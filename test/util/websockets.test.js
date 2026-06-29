@@ -74,6 +74,9 @@ describe('util/websockets', () => {
         received = [];
         respond = null;
         server = new Server(TEST_TARGET);
+        // The source resolves the live URL from window.__firebolt.endpoint, so
+        // point it at the mock server bound to TEST_TARGET.
+        global.window.__firebolt = { endpoint: TEST_TARGET };
         server.on('connection', socket => {
             socket.on('message', raw => {
                 const msg = JSON.parse(raw);
@@ -85,6 +88,83 @@ describe('util/websockets', () => {
 
     afterEach(done => {
         server.stop(done);
+    });
+
+    describe('Firebolt endpoint resolution', () => {
+        beforeEach(() => { websockets = loadWebsockets(); });
+
+        async function expectEndpointError(promise) {
+            let error;
+            try {
+                await promise;
+            } catch (err) {
+                error = err;
+            }
+            expect(error, 'expected the request to reject').to.be.an.instanceof(FakeOipfError);
+            expect(error.code).to.equal(205);
+        }
+
+        it('connects using window.__firebolt.endpoint, not the target id', async () => {
+            // target is a logical id; the live URL comes from the global.
+            respond = (socket, msg) =>
+                socket.send(JSON.stringify({ jsonrpc: '2.0', id: msg.id, result: 'ok' }));
+
+            const result = await websockets.send({ target: 'Firebolt', method: 'Foo.bar' });
+
+            expect(result).to.equal('ok');
+            expect(received).to.have.length(1);
+        });
+
+        it('rejects send() with OipfError 205 when window.__firebolt is undefined', async () => {
+            delete global.window.__firebolt;
+            await expectEndpointError(websockets.send({ target: 'Firebolt', method: 'Foo.bar' }));
+        });
+
+        it('rejects send() with OipfError 205 when endpoint is missing', async () => {
+            global.window.__firebolt = {};
+            await expectEndpointError(websockets.send({ target: 'Firebolt', method: 'Foo.bar' }));
+        });
+
+        it('rejects send() with OipfError 205 when endpoint is not a ws(s):// URL', async () => {
+            global.window.__firebolt = { endpoint: 'http://127.0.0.1:9998/jsonrpc' };
+            await expectEndpointError(websockets.send({ target: 'Firebolt', method: 'Foo.bar' }));
+        });
+
+        it('surfaces the missing-endpoint failure through registerEvent', async () => {
+            // registerEvent rewraps any subscription failure as OipfError(203),
+            // embedding the underlying endpoint message.
+            delete global.window.__firebolt;
+            let error;
+            try {
+                await websockets.registerEvent('Firebolt', 'Foo.onBar', () => {});
+            } catch (err) {
+                error = err;
+            }
+            expect(error).to.be.an.instanceof(FakeOipfError);
+            expect(error.code).to.equal(203);
+            expect(error.message).to.contain('window.__firebolt.endpoint');
+        });
+
+        it('connects when endpoint carries a session token query string', async () => {
+            const tokenedUrl = `${TEST_TARGET}?token=app-instance-123`;
+            global.window.__firebolt = { endpoint: tokenedUrl };
+            // mock-socket matches clients to a server by exact URL, so bind one
+            // at the tokened URL for this case.
+            const tokenServer = new Server(tokenedUrl);
+            tokenServer.on('connection', socket => {
+                socket.on('message', raw => {
+                    const msg = JSON.parse(raw);
+                    socket.send(JSON.stringify({ jsonrpc: '2.0', id: msg.id, result: 'ok' }));
+                });
+            });
+
+            try {
+                const result = await websockets.send({ target: 'Firebolt', method: 'Foo.bar' });
+                expect(result).to.equal('ok');
+            } finally {
+                await new Promise(resolve => tokenServer.stop(resolve));
+            }
+        });
     });
 
     describe('send — request shape', () => {
