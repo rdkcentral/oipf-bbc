@@ -22,6 +22,31 @@ if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     exit 1
 fi
 
+# ─── Preflight ────────────────────────────────────────────────────────────────
+if ! command -v node &>/dev/null; then
+    echo "Error: Node.js is not installed or not in PATH."
+    echo "  Install it from https://nodejs.org or via a version manager (nvm, fnm)."
+    exit 1
+fi
+
+if ! command -v npm &>/dev/null; then
+    echo "Error: npm is not installed or not in PATH."
+    echo "  npm is bundled with Node.js — reinstalling Node should fix this."
+    exit 1
+fi
+
+if ! command -v docker &>/dev/null; then
+    echo "Error: Docker is not installed or not in PATH."
+    echo "  Install Docker Desktop from https://www.docker.com/products/docker-desktop"
+    exit 1
+fi
+
+if ! docker info &>/dev/null; then
+    echo "Error: Docker is installed but the daemon is not running."
+    echo "  Start Docker and try again."
+    exit 1
+fi
+
 echo ""
 echo "==================================================================="
 echo "  Build Bolt Package"

@@ -53,7 +53,7 @@ echo ""
 jsonrpc() {
     curl -fsS -X POST "$JSONRPC_URL" \
         --header 'Content-Type: application/json' \
-        --data "$1"
+        --data @- <<< "$1"
 }
 
 # ─── Common: clear iptables ───────────────────────────────────────────────────
@@ -76,21 +76,58 @@ cmd_install() {
     echo ""
 
     echo "── [2/3] Installing package ─────────────────────────────────────────────"
-    jsonrpc "{ \"jsonrpc\":\"2.0\", \"id\":501, \"method\":\"org.rdk.PackageManagerRDKEMS.install\", \"params\":{ \"packageId\":\"${APP_ID}\", \"version\":\"${VERSION}\", \"fileLocator\":\"/tmp/${BOLT_PACKAGE_NAME}\" } }"
+    local payload
+    payload=$(cat << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 500,
+  "method": "org.rdk.PackageManagerRDKEMS.install",
+  "params": {
+    "packageId": "${APP_ID}",
+    "version": "${VERSION}",
+    "fileLocator": "/tmp/${BOLT_PACKAGE_NAME}"
+  }
+}
+EOF
+)
+    jsonrpc "$payload"
     sleep 5
     echo ""
     echo "    Done."
     echo ""
 
     echo "── [3/3] Validating installed packages ──────────────────────────────────"
-    jsonrpc '{"jsonrpc":"2.0","id":505,"method":"org.rdk.PackageManagerRDKEMS.listPackages"}'
+    local list_payload
+    list_payload=$(cat << 'EOF'
+{
+  "jsonrpc": "2.0",
+  "id": 501,
+  "method": "org.rdk.PackageManagerRDKEMS.listPackages"
+}
+EOF
+)
+    jsonrpc "$list_payload"
     sleep 5
     echo ""
 }
 
 cmd_run() {
     echo "── [1/1] Launching app ──────────────────────────────────────────────────"
-    jsonrpc "{\"jsonrpc\":\"2.0\",\"id\":700,\"method\":\"org.rdk.AppManager.launchApp\",\"params\":{\"appId\":\"${APP_ID}\",\"intent\":\"{\\\"action\\\":\\\"launch\\\",\\\"context\\\":{\\\"source\\\":\\\"manual\\\"}}\",\"launchArgs\":\"{}\"}}"
+    local payload
+    payload=$(cat << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 502,
+  "method": "org.rdk.AppManager.launchApp",
+  "params": {
+    "appId": "${APP_ID}",
+    "intent": "{\"action\":\"launch\",\"context\":{\"source\":\"manual\"}}",
+    "launchArgs": "{}"
+  }
+}
+EOF
+)
+    jsonrpc "$payload"
     sleep 5
     echo ""
     echo "    Done."
@@ -99,14 +136,38 @@ cmd_run() {
 
 cmd_stop() {
     echo "── [1/2] Terminating app ────────────────────────────────────────────────"
-    jsonrpc "{\"jsonrpc\":\"2.0\",\"id\":700,\"method\":\"org.rdk.AppManager.terminateApp\",\"params\":{\"appId\":\"${APP_ID}\"}}"
+    local payload
+    payload=$(cat << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 503,
+  "method": "org.rdk.AppManager.terminateApp",
+  "params": {
+    "appId": "${APP_ID}"
+  }
+}
+EOF
+)
+    jsonrpc "$payload"
     sleep 5
     echo ""
     echo "    Done."
     echo ""
 
     echo "── [2/2] Killing app ────────────────────────────────────────────────────"
-    jsonrpc "{\"jsonrpc\":\"2.0\",\"id\":700,\"method\":\"org.rdk.AppManager.killApp\",\"params\":{\"appId\":\"${APP_ID}\"}}"
+    local kill_payload
+    kill_payload=$(cat << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 504,
+  "method": "org.rdk.AppManager.killApp",
+  "params": {
+    "appId": "${APP_ID}"
+  }
+}
+EOF
+)
+    jsonrpc "$kill_payload"
     sleep 5
     echo ""
     echo "    Done."
@@ -115,7 +176,20 @@ cmd_stop() {
 
 cmd_remove() {
     echo "── [1/1] Uninstalling package ───────────────────────────────────────────"
-    jsonrpc "{ \"jsonrpc\":\"2.0\", \"id\":501, \"method\":\"org.rdk.PackageManagerRDKEMS.uninstall\", \"params\":{ \"packageId\":\"${APP_ID}\", \"version\":\"${VERSION}\" } }"
+    local payload
+    payload=$(cat << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 505,
+  "method": "org.rdk.PackageManagerRDKEMS.uninstall",
+  "params": {
+    "packageId": "${APP_ID}",
+    "version": "${VERSION}"
+  }
+}
+EOF
+)
+    jsonrpc "$payload"
     sleep 5
     echo ""
     echo "    Done."
