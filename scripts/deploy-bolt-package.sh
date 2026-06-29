@@ -66,6 +66,11 @@ echo ""
 
 cmd_install() {
     echo "── [1/3] Copying package to device ─────────────────────────────────────"
+    if [[ ! -f "$SIGNED_BOLT" ]]; then
+        echo "Error: Signed bolt package not found: $SIGNED_BOLT"
+        echo "       Build it first with: ./scripts/build-bolt-package.sh $VERSION"
+        exit 1
+    fi
     scp -O "$SIGNED_BOLT" "root@${DEVICE_IP}:/tmp/"
     echo "    Done."
     echo ""
