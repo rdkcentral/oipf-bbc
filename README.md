@@ -220,7 +220,7 @@ const { preferedAudioLanguage, countryId, subtitlesEnabled } = cfg.configuration
 
 | Symbol | Type | Description |
 |---|---|---|
-| `getDisplayInfo()` | `Function → DisplayInfo` | Returns EDID display capabilities |
+| `getDisplayInfo()` | `Function → Promise<{edid: string}>` | Resolves with `{ edid }` (Base64-encoded EDID string) |
 | `VERSION` | `string` | Library version string (includes git hash) |
 
 ### `DisplayInfo`
