@@ -16,7 +16,7 @@ It intercepts `document.getElementById` calls for known OIPF object types and re
 ## Build
 
 ```bash
-# Production (minified, console statements stripped)
+# Production (minified, console.debug/log/info stripped)
 npm run build
 
 # Development (with debug symbols)
@@ -266,8 +266,7 @@ bbc.oipfApplicationManager.getOwnerApplication()
 
 ### `OipfError`
 
-All errors thrown by the library use this class.
-
+All errors intentionally surfaced by the library's public API use this class (some internal helpers may still throw native `Error` instances).
 | Property | Type | Description |
 |---|---|---|
 | `type` | `number \| string` | Numeric or alphanumeric error ID |

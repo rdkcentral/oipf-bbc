@@ -25,7 +25,7 @@ All commands are run from the repository root.
 npm run serve:testapp
 ```
 
-Starts a local HTTP server on **port 8137**. Open `http://localhost:8137/testapp/` in a browser or on the STB.
+Starts a local HTTP server on **port 8137** by default (override with `PORT`). Open `http://localhost:8137/testapp/` in a browser or on the STB.
 
 ### Build for deployment
 
@@ -33,7 +33,7 @@ Starts a local HTTP server on **port 8137**. Open `http://localhost:8137/testapp
 # Standalone — relies on the library being injected by the platform
 npm run build:testapp
 
-# Self-contained — embeds the oipf-bbc library (useful for off-platform testing)
+# Self-contained — embeds the oipf-bbc library (run `npm run build` first)
 npm run build:testapp:dev
 ```
 
