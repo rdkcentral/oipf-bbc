@@ -223,8 +223,11 @@ const { preferedAudioLanguage, countryId, subtitlesEnabled } = cfg.configuration
 | `getDisplayInfo()` | `Function → Promise<{edid: string}>` | Resolves with `{ edid }` (Base64-encoded EDID string) |
 | `VERSION` | `string` | Library version string (includes git hash) |
 
-### `DisplayInfo`
+### `getPrimaryDisplay()`
 
+Returns a cached `DisplayInfo` object (physical size + supported video modes) populated during library initialisation.
+
+### `DisplayInfo`
 | Property | Type | Description |
 |---|---|---|
 | `physicalWidth` | `number` | Display width in centimetres |
