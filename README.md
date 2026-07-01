@@ -69,9 +69,13 @@ const app = oipfObjectFactory.createApplicationManagerObject();
 ### Method 3 — Namespaces
 
 ```javascript
-// Display information
-const display = onesdk.getDisplayInfo();
+// EDID information (async; resolves with { edid })
+onesdk.getDisplayInfo().then(({ edid }) => {
+  console.log(edid);
+});
 
+// Cached primary display info (size + supported modes)
+const display = getPrimaryDisplay();
 // Broadcast state
 const channel   = bbc.videoBroadcast.currentChannel;
 const playState = bbc.videoBroadcast.playState;
