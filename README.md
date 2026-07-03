@@ -253,7 +253,7 @@ Each `videoMode` entry:
 
 ### `bbc`
 
-Direct service access for cases where the DOM object model is not needed.
+Direct service access for cases where the DOM interaction is not needed.
 
 ```javascript
 bbc.videoBroadcast.currentChannel
