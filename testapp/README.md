@@ -138,10 +138,10 @@ Copies, installs, runs, stops, or removes the signed Bolt package on a target RD
 
 | Command | Description |
 |---|---|
-| `install` | Copies the signed `.bolt` to `/tmp/` on the device via `scp`, then calls `PackageManagerRDKEMS.install` over JSON-RPC. Validates the result by listing installed packages. |
-| `run` | Launches the app via `AppManager.launchApp` |
-| `stop` | Terminates and kills the app via `AppManager.terminateApp` + `AppManager.killApp` |
-| `remove` | Uninstalls the package via `PackageManagerRDKEMS.uninstall` |
+| `install` | Copies the signed `.bolt` to `/tmp/` on the device via `scp`, then calls `org.rdk.PackageManagerRDKEMS.install` over JSON-RPC. Validates the result by listing installed packages. |
+| `run` | Launches the app via `org.rdk.AppManager.launchApp` |
+| `stop` | Terminates and kills the app via `org.rdk.AppManager.terminateApp` + `org.rdk.AppManager.killApp` |
+| `remove` | Uninstalls the package via `org.rdk.PackageManagerRDKEMS.uninstall` |
 
 All commands first flush `iptables` on the device via SSH.
 
