@@ -95,6 +95,7 @@ const country = bbc.oipfConfiguration.configuration.countryId;
 | `createVideoBroadcastObject()` | `VideoBroadcast` | Create a video broadcast object |
 | `createApplicationManagerObject()` | `ApplicationManager` | Create an application manager object |
 | `createConfigurationObject()` | `Configuration` | Create a device configuration object |
+| `isObjectSupported(mimeType)` | `boolean` | Returns `true` if the given MIME type is supported (`video/broadcast`, `application/oipfApplicationManager`, `application/oipfConfiguration`); `false` otherwise |
 
 ---
 
