@@ -58,10 +58,20 @@ function loadFactory() {
 describe('oipf/oipfObjectFactory', () => {
     let factory;
     let calls;
+    let originalDocument;
 
     before(() => {
+        originalDocument = global.document;
         ({ factory, calls } = loadFactory());
     });
+
+    after(() => {
+        if (typeof originalDocument === 'undefined') {
+            delete global.document;
+        } else {
+            global.document = originalDocument;
+        }
+     });
 
     describe('shape', () => {
         it('exposes all four public methods', () => {
