@@ -33,16 +33,14 @@
         return !!value && typeof value.item === 'function' && typeof value.length === 'number';
     }
 
-function assertValidChannel(channel) {
-    if (!channel || typeof channel !== 'object') {
-        throw new Error('expected channel to be a non-null object, got: ' + (channel === null ? 'null' : typeof channel));
+    function assertValidChannel(channel) {
+        if (!channel || typeof channel !== 'object') {
+            throw new Error('expected channel to be a non-null object, got: ' + (channel === null ? 'null' : typeof channel));
+        }
+        if (typeof channel.ccid !== 'string') {
+            throw new Error('channel is missing a string ccid: ' + JSON.stringify(channel));
+        }
     }
-    if (typeof channel.ccid !== 'string') {
-        throw new Error('channel is missing a string ccid: ' + JSON.stringify(channel));
-    }
-}
-    }
-
     function assertValidPlayState(playState) {
         if (VALID_PLAY_STATES.indexOf(playState) === -1) {
             throw new Error('expected playState to be one of ' + VALID_PLAY_STATES.join(', ') + ', got: ' + playState);
