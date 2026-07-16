@@ -260,9 +260,10 @@ describe('oipf/videoBroadcastService', () => {
             });
             await service.init();
 
-            service.bindToCurrentChannel();
+            const resolved = await service.bindToCurrentChannel();
             await flush(); await flush(); await flush();
 
+            expect(resolved).to.equal(ch);
             expect(service.getCurrentChannel()).to.equal(ch);
             expect(service.getPlayState()).to.equal(PLAYSTATE_PRESENTING);
         });
@@ -435,7 +436,7 @@ describe('oipf/videoBroadcastService', () => {
     });
 
     describe('bindToCurrentChannel', () => {
-        it('dispatches ChannelChangeError(5) when the host channel is not in the channel list', async () => {
+        it('dispatches ChannelChangeError(5) and resolves null when the host channel is not in the channel list', async () => {
             const { service } = loadService({
                 broadcast: {
                     getChannels: () => Promise.resolve([{ ccid: 'ccid:1001' }]),
@@ -446,13 +447,39 @@ describe('oipf/videoBroadcastService', () => {
             const view = makeView();
             service.attachView(view);
 
-            service.bindToCurrentChannel();
+            const resolved = await service.bindToCurrentChannel();
             await flush(); await flush();
+
+            expect(resolved).to.equal(null);
 
             const err = view.events.find(e => e.type === 'ChannelChangeError');
             expect(err).to.exist;
             expect(err.errorState).to.equal(5);
             expect(err.channel).to.equal(null);
+        });
+
+        it('resolves with the host-tuned channel when playState is STOPPED, without waiting for the tune to complete', async () => {
+            const ch = { ccid: 'ccid:1001', name: 'BBC One', majorChannel: 1, idType: ID_DVB_C };
+            const { service } = loadService({
+                broadcast: {
+                    getChannels: () => Promise.resolve([ch]),
+                    getCurrentChannelId: () => Promise.resolve('1001'),
+                    listenForTuneCompletion: () => Promise.resolve(),
+                    tuneToChannelByNumber: () => Promise.resolve(),
+                    getChannelById: () => Promise.resolve(ch)
+                }
+            });
+            await service.init();
+            const view = makeView();
+            service.attachView(view);
+            service.setChannel(ch);
+            await flush(); await flush(); await flush();
+            service.stop();
+            expect(service.getPlayState()).to.equal(PLAYSTATE_STOPPED);
+
+            const resolved = await service.bindToCurrentChannel();
+
+            expect(resolved).to.equal(ch);
         });
     });
 
