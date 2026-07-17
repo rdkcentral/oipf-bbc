@@ -136,7 +136,7 @@
                 }
             },
             {
-                name: 'bindToCurrentChannel (bind -> read state -> stop) ',
+                name: 'bindToCurrentChannel (bind -> read state -> stop)',
                 run: function (vb) {
                     return Promise.resolve(vb.bindToCurrentChannel())
                         .then(function (boundChannel) {

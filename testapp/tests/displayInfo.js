@@ -21,6 +21,10 @@
  */
 (function () {
     function assertValidVideoMode(mode, i) {
+        if (!mode) {
+            return;
+        }
+
         if (typeof mode.width !== 'number' || typeof mode.height !== 'number' || typeof mode.framerate !== 'number') {
             throw new Error('videoModes[' + i + '] missing numeric width/height/framerate: ' + JSON.stringify(mode));
         }
