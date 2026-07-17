@@ -34,8 +34,16 @@
     }
 
     function assertValidChannel(channel) {
-        if (!channel || typeof channel !== 'object') {
-            throw new Error('expected channel to be a non-null object, got: ' + (channel === null ? 'null' : typeof channel));
+        // null/undefined are legitimate: no channel bound yet (e.g. before the first
+        // successful bind/tune), or bindToCurrentChannel() couldn't map the host's
+        // current channel into the channel list. Only validate shape when a channel
+        // object is actually present, so these expected cases don't read as failures.
+        if (channel === null || channel === undefined) {
+            return;
+        }
+
+        if (typeof channel !== 'object') {
+            throw new Error('expected channel to be null, undefined, or an object, got: ' + typeof channel);
         }
         if (typeof channel.ccid !== 'string') {
             throw new Error('channel is missing a string ccid: ' + JSON.stringify(channel));
