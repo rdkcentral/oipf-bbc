@@ -25,6 +25,36 @@
 (function () {
     var METHODS = ['getChannelConfig', 'bindToCurrentChannel', 'setChannel', 'getComponents', 'selectComponent', 'stop'];
 
+    // OIPF play states (see the VideoBroadcast spec): 0 UNREALIZED, 1 CONNECTING,
+    // 2 PRESENTING, 3 STOPPED. Not exposed as globals to the test app, so mirrored here.
+    var VALID_PLAY_STATES = [0, 1, 2, 3];
+
+    function isArrayLike(value) {
+        return !!value && typeof value.item === 'function' && typeof value.length === 'number';
+    }
+
+    function assertValidChannel(channel) {
+        // null/undefined are legitimate: no channel bound yet (e.g. before the first
+        // successful bind/tune), or bindToCurrentChannel() couldn't map the host's
+        // current channel into the channel list. Only validate shape when a channel
+        // object is actually present, so these expected cases don't read as failures.
+        if (channel === null || channel === undefined) {
+            return;
+        }
+
+        if (typeof channel !== 'object') {
+            throw new Error('expected channel to be null, undefined, or an object, got: ' + typeof channel);
+        }
+        if (typeof channel.ccid !== 'string') {
+            throw new Error('channel is missing a string ccid: ' + JSON.stringify(channel));
+        }
+    }
+    function assertValidPlayState(playState) {
+        if (VALID_PLAY_STATES.indexOf(playState) === -1) {
+            throw new Error('expected playState to be one of ' + VALID_PLAY_STATES.join(', ') + ', got: ' + playState);
+        }
+    }
+
     harness.register({
         path: [harness.INTERFACE, 'Video Broadcast'],
         accessors: {
@@ -55,25 +85,42 @@
             {
                 name: 'getChannelConfig()',
                 run: function (vb) {
-                    return Promise.resolve(vb.getChannelConfig());
+                    return Promise.resolve(vb.getChannelConfig()).then(function (config) {
+                        if (!config) {
+                            throw new Error('getChannelConfig() returned a falsy value');
+                        }
+                        if (!isArrayLike(config.channelList)) {
+                            throw new Error('getChannelConfig().channelList is not array-like (missing length/item()): ' + JSON.stringify(config.channelList));
+                        }
+                        return { channelCount: config.channelList.length };
+                    });
                 }
             },
             {
                 name: 'currentChannel (getter)',
                 run: function (vb) {
-                    return vb.currentChannel;
+                    var channel = vb.currentChannel;
+                    assertValidChannel(channel);
+                    return { currentChannel: channel };
                 }
             },
             {
                 name: 'playState (getter)',
                 run: function (vb) {
-                    return { playState: vb.playState };
+                    var playState = vb.playState;
+                    assertValidPlayState(playState);
+                    return { playState: playState };
                 }
             },
             {
                 name: 'getComponents()',
                 run: function (vb) {
-                    return Promise.resolve(vb.getComponents());
+                    return Promise.resolve(vb.getComponents()).then(function (components) {
+                        if (components !== null && components !== undefined && !isArrayLike(components)) {
+                            throw new Error('getComponents() is neither null/undefined nor array-like (missing length/item()): ' + JSON.stringify(components));
+                        }
+                        return { components: components };
+                    });
                 }
             },
             {
@@ -97,15 +144,21 @@
                 }
             },
             {
-                name: 'Tune flow: bind -> read state -> stop',
+                name: 'bindToCurrentChannel (bind -> read state -> stop)',
                 run: function (vb) {
                     return Promise.resolve(vb.bindToCurrentChannel())
-                        .then(function () {
-                            harness.log('bindToCurrentChannel resolved; playState=' + vb.playState);
+                        .then(function (boundChannel) {
+                            assertValidChannel(boundChannel);
+                            assertValidPlayState(vb.playState);
+                            harness.log('bindToCurrentChannel resolved; channel=' + (boundChannel && boundChannel.ccid) + '; playState=' + vb.playState);
                             return Promise.resolve(vb.stop());
                         })
                         .then(function () {
-                            return { currentChannel: vb.currentChannel, playState: vb.playState };
+                            var currentChannel = vb.currentChannel;
+                            var playState = vb.playState;
+                            assertValidChannel(currentChannel);
+                            assertValidPlayState(playState);
+                            return { currentChannel: currentChannel, playState: playState };
                         });
                 }
             }
