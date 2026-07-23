@@ -12,11 +12,8 @@
         "test": "NODE_PATH=./lib mocha",
         "serve:testapp": "webpack serve --mode=development --config-name testapp",
         "validate:testapp": "node scripts/validate-testapp.js",
-        "build:testapp": "run-s build:testapp:webpack build:testapp:package",
-        "build:testapp:webpack": "webpack --mode=production --config-name testapp",
-        "build:testapp:webpack:with-lib": "webpack --mode=production --config-name testapp --env withLib",
-        "build:testapp:package": "node scripts/build-testapp.js",
-        "build:testapp:dev": "run-s build:testapp:webpack:with-lib build:testapp:package"
+        "build:testapp": "webpack --mode=production --config-name testapp",
+        "build:testapp:dev": "webpack --mode=production --config-name testapp --env withLib"
     },
     "author": "Infosys",
     "license": "Apache-2.0",

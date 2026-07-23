@@ -70,6 +70,13 @@ npm run build:testapp
 echo "    Done — output: testapp/dist/"
 echo ""
 
+for f in index.html testapp.bundle.js testapp.css; do
+    if [[ ! -f "$WORKSPACE/testapp/dist/$f" ]]; then
+        echo "Error: testapp/dist/$f not found — the webpack build did not produce the expected output."
+        exit 1
+    fi
+done
+
 # ─── Step 3: Docker image ─────────────────────────────────────────────────────
 echo "── [3/4] Checking Docker image ──────────────────────────────────────────"
 if docker image inspect "$DOCKER_IMAGE" &>/dev/null; then
