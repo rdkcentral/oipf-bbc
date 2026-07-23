@@ -20,31 +20,31 @@
  * drill-down stack; this view owns which item is focused within the shown level.
  * Emits intent via opts.onActivate(childNode); opts.isLeaf decides the chevron.
  */
-window.Harness = window.Harness || {};
+import { updateScrollHints } from 'harness/util.js';
 
-window.Harness.createMenuView = function (opts) {
-    var onActivate = opts.onActivate;
-    var isLeaf = opts.isLeaf;
+export function createMenuView(opts) {
+    const onActivate = opts.onActivate;
+    const isLeaf = opts.isLeaf;
 
-    var scrollEl = document.getElementById('menuScroll');
-    var breadcrumbEl = document.getElementById('menuBreadcrumb');
-    var captionEl = document.getElementById('menuCaption');
+    const scrollEl = document.getElementById('menuScroll');
+    const breadcrumbEl = document.getElementById('menuBreadcrumb');
+    const captionEl = document.getElementById('menuCaption');
 
-    var currentNode = null; // the branch whose children are listed
-    var focusIndex = 0;
-    var ghosted = false; // true while the results pane holds true focus
+    let currentNode = null; // the branch whose children are listed
+    let focusIndex = 0;
+    let ghosted = false; // true while the results pane holds true focus
 
     function updateHints() {
-        window.Harness.updateScrollHints('menuScroll', 'menuScrollUp', 'menuScrollDown');
+        updateScrollHints('menuScroll', 'menuScrollUp', 'menuScrollDown');
     }
 
     function repaintFocus() {
-        var focusedClass = 'menuItem focused' + (ghosted ? ' ghosted' : '');
-        var items = scrollEl.querySelectorAll('.menuItem');
-        for (var i = 0; i < items.length; i++) {
+        const focusedClass = 'menuItem focused' + (ghosted ? ' ghosted' : '');
+        const items = scrollEl.querySelectorAll('.menuItem');
+        for (let i = 0; i < items.length; i++) {
             items[i].className = i === focusIndex ? focusedClass : 'menuItem';
         }
-        var focused = items[focusIndex];
+        const focused = items[focusIndex];
         if (focused && focused.scrollIntoView) {
             focused.scrollIntoView({ block: 'nearest' });
         }
@@ -60,18 +60,18 @@ window.Harness.createMenuView = function (opts) {
 
         scrollEl.innerHTML = '';
         node.children.forEach(function (child, i) {
-            var item = document.createElement('div');
+            const item = document.createElement('div');
             item.className = 'menuItem';
 
-            var text = document.createElement('div');
+            const text = document.createElement('div');
             text.className = 'menuItemText';
-            var label = document.createElement('span');
+            const label = document.createElement('span');
             label.className = 'menuLabel';
             label.textContent = child.label;
             text.appendChild(label);
             if (child.subtitle) {
                 // Second line explaining the item (e.g. what an interface means).
-                var subtitle = document.createElement('span');
+                const subtitle = document.createElement('span');
                 subtitle.className = 'menuSubtitle';
                 subtitle.textContent = child.subtitle;
                 text.appendChild(subtitle);
@@ -80,7 +80,7 @@ window.Harness.createMenuView = function (opts) {
 
             if (!isLeaf(child)) {
                 // Branch — show a drill-in affordance.
-                var chevron = document.createElement('span');
+                const chevron = document.createElement('span');
                 chevron.className = 'menuChevron';
                 chevron.textContent = '›';
                 item.appendChild(chevron);
@@ -129,4 +129,4 @@ window.Harness.createMenuView = function (opts) {
         setGhosted: setGhosted,
         updateHints: updateHints
     };
-};
+}

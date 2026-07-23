@@ -19,7 +19,6 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width">
         <title>oipf-bbc integration test app</title>
-        <link rel="stylesheet" type="text/css" href="harness/harness.css">
     </head>
     <body>
         <header id="appHeader">
@@ -73,28 +72,15 @@
         </div>
 
         <!--
-            The library is intentionally NOT loaded with a static <script> tag here.
-            harness/loader.js decides whether to inject the local ../dist/stb/oipf-bbc.js
-            copy or bind to a platform-injected (auto-loaded) instance. See the plan /
-            the loader source for the two supported environments.
+            No manual <script> list here: webpack builds src/index.js (which pulls in
+            harness.css, every test module in registration order, and loader.js last)
+            into a single bundle that HtmlWebpackPlugin injects automatically.
+
+            The library itself is intentionally NOT a static import — harness/loader.js
+            decides at runtime whether to inject the local stb/oipf-bbc.js copy (relative
+            to this app's own root — see webpack.config.js's CopyWebpackPlugin step,
+            which copies dist/stb/ into this build's own output) or bind to a
+            platform-injected instance.
         -->
-        <script src="harness/util.js"></script>
-        <script src="harness/model/tree.js"></script>
-        <script src="harness/model/runner.js"></script>
-        <script src="harness/model/autorun.js"></script>
-        <script src="harness/view/log.js"></script>
-        <script src="harness/view/menuView.js"></script>
-        <script src="harness/view/resultView.js"></script>
-        <script src="harness/view/popupView.js"></script>
-        <script src="harness/controller/controller.js"></script>
-        <script src="harness/harness.js"></script>
-        <!-- Registration order sets menu order: interface features first (so the
-             top level is bbc / Factory / DOM), then the global onesdk category. -->
-        <script src="tests/configuration.js"></script>
-        <script src="tests/applicationManager.js"></script>
-        <script src="tests/videoBroadcast.js"></script>
-        <script src="tests/displayInfo.js"></script>
-        <script src="tests/factory.js"></script>
-        <script src="harness/loader.js"></script>
     </body>
 </html>

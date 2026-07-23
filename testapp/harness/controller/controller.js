@@ -19,19 +19,17 @@
  * pane, the drill-down level stack, and the reload-pending flag. Views own their
  * own cursors (menu focus, result row/data); the model (tree, runner) is DOM-free.
  */
-window.Harness = window.Harness || {};
-
-window.Harness.createController = function (deps) {
-    var tree = deps.tree;
-    var runner = deps.runner;
-    var autoRunner = deps.autoRunner;
-    var logView = deps.logView;
-    var menuView = deps.menuView;
-    var resultView = deps.resultView;
-    var popupView = deps.popupView;
+export function createController(deps) {
+    const tree = deps.tree;
+    const runner = deps.runner;
+    const autoRunner = deps.autoRunner;
+    const logView = deps.logView;
+    const menuView = deps.menuView;
+    const resultView = deps.resultView;
+    const popupView = deps.popupView;
 
     // Map raw key codes to semantic actions in one place
-    var KEY_ACTIONS = {
+    const KEY_ACTIONS = {
         40: 'down',
         38: 'up',
         13: 'select',
@@ -42,11 +40,11 @@ window.Harness.createController = function (deps) {
         461: 'back'
     };
 
-    var pane = 'menu'; // 'menu' | 'results' | 'popup'
-    var levels = []; // drill-down stack of { node, savedFocus }; last = current
+    let pane = 'menu'; // 'menu' | 'results' | 'popup'
+    let levels = []; // drill-down stack of { node, savedFocus }; last = current
 
     function setStatus(text) {
-        var el = document.getElementById('appStatus');
+        const el = document.getElementById('appStatus');
         if (el) {
             el.textContent = text;
         }
@@ -55,8 +53,8 @@ window.Harness.createController = function (deps) {
     // ---- menu side -------------------------------------------------------
 
     function renderMenu() {
-        var top = levels[levels.length - 1];
-        var breadcrumb = levels.map(function (frame) {
+        const top = levels[levels.length - 1];
+        const breadcrumb = levels.map(function (frame) {
             return frame.node.label;
         });
         menuView.render(top.node, top.savedFocus || 0, breadcrumb, pane === 'results');
@@ -78,8 +76,8 @@ window.Harness.createController = function (deps) {
     }
 
     function selectFocused() {
-        var top = levels[levels.length - 1];
-        var child = top.node.children[menuView.focusedIndex()];
+        const top = levels[levels.length - 1];
+        const child = top.node.children[menuView.focusedIndex()];
         if (child) {
             activate(child);
         }
@@ -116,7 +114,7 @@ window.Harness.createController = function (deps) {
         resultView.setActive(true);
         resultView.reset(node.label);
 
-        var prep = runner.prepare(node);
+        const prep = runner.prepare(node);
         if (prep.kind === 'unavailable') {
             resultView.showUnavailable(prep.message);
         } else if (prep.kind === 'setupFailure') {
@@ -126,7 +124,7 @@ window.Harness.createController = function (deps) {
             });
         } else {
             prep.cases.forEach(function (testCase) {
-                var rowCtl = resultView.addCase(testCase.name);
+                const rowCtl = resultView.addCase(testCase.name);
                 if (testCase.manual) {
                     // Don't auto-run; wait for explicit activation.
                     rowCtl.arm(function () {
@@ -152,7 +150,7 @@ window.Harness.createController = function (deps) {
     // modal popup. The run can't be cancelled (Back is inert until it completes).
     function startAutorun(scope, label) {
         pane = 'popup';
-        var plan = autoRunner.collect(scope); // one traversal; the denominator + run plan
+        const plan = autoRunner.collect(scope); // one traversal; the denominator + run plan
         popupView.open(label, plan.total);
         autoRunner
             .run(plan, function (entry) {
@@ -201,7 +199,7 @@ window.Harness.createController = function (deps) {
     }
 
     function onKeyDown(e) {
-        var action = KEY_ACTIONS[e.keyCode || e.which];
+        const action = KEY_ACTIONS[e.keyCode || e.which];
         if (!action) {
             return;
         }
@@ -235,7 +233,7 @@ window.Harness.createController = function (deps) {
             popupView.updateHints();
         });
 
-        var version = '?';
+        let version = '?';
         try {
             version = (env && env.onesdk && env.onesdk.VERSION) || '?';
         } catch (e) {
@@ -257,4 +255,4 @@ window.Harness.createController = function (deps) {
         fatal: fatal,
         activate: activate
     };
-};
+}

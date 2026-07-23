@@ -18,16 +18,16 @@
  * LogView (View) — mirrors console output to the on-screen log pane, since the
  * target STB browser has no devtools. Owns the #logList DOM; no app logic.
  */
-window.Harness = window.Harness || {};
+import { pretty } from 'harness/util.js';
 
-window.Harness.createLogView = function () {
-    var list = document.getElementById('logList');
+export function createLogView() {
+    const list = document.getElementById('logList');
 
     function append(text, isError) {
         if (!list) {
             return;
         }
-        var line = document.createElement('div');
+        const line = document.createElement('div');
         line.className = 'logLine' + (isError ? ' error' : '');
         line.textContent = text;
         list.appendChild(line);
@@ -39,7 +39,7 @@ window.Harness.createLogView = function () {
         // bare "{}" that JSON.stringify produces for them.
         return Array.prototype.map
             .call(args, function (a) {
-                return window.Harness.pretty(a);
+                return pretty(a);
             })
             .join(' ');
     }
@@ -47,7 +47,7 @@ window.Harness.createLogView = function () {
     // Wraps console.* and global error events to also append to the log pane.
     function captureConsole() {
         ['log', 'info', 'warn', 'error'].forEach(function (level) {
-            var original = console[level] ? console[level].bind(console) : function () {};
+            const original = console[level] ? console[level].bind(console) : function () {};
             console[level] = function () {
                 append(stringifyArgs(arguments), level === 'error' || level === 'warn');
                 original.apply(null, arguments);
@@ -65,4 +65,4 @@ window.Harness.createLogView = function () {
         append: append,
         captureConsole: captureConsole
     };
-};
+}

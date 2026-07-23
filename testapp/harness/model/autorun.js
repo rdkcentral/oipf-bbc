@@ -20,18 +20,16 @@
  * headless-testable. Scoping to one subtree keeps single-instance objects
  * (VideoBroadcast / ApplicationManager) from conflicting across interfaces.
  */
-window.Harness = window.Harness || {};
-
-window.Harness.createAutoRunner = function (deps) {
-    var tree = deps.tree;
-    var runner = deps.runner;
+export function createAutoRunner(deps) {
+    const tree = deps.tree;
+    const runner = deps.runner;
 
     // Depth-first list of every leaf under a node (the node itself if it's a leaf).
     function leavesUnder(node) {
         if (tree.isLeaf(node)) {
             return [node];
         }
-        var out = [];
+        let out = [];
         node.children.forEach(function (child) {
             out = out.concat(leavesUnder(child));
         });
@@ -42,12 +40,12 @@ window.Harness.createAutoRunner = function (deps) {
     // counts (total non-manual cases as the progress denominator; manual + N/A
     // skipped). The sole source of truth for "what runs" — run() consumes this.
     function collect(scope) {
-        var total = 0;
-        var manualSkipped = 0;
-        var naCount = 0;
-        var leaves = [];
+        let total = 0;
+        let manualSkipped = 0;
+        let naCount = 0;
+        const leaves = [];
         leavesUnder(scope).forEach(function (leaf) {
-            var group = leaf.group;
+            const group = leaf.group;
             if (!group.cases) {
                 naCount++; // naMessage leaf (or no cases)
                 return;
@@ -68,18 +66,18 @@ window.Harness.createAutoRunner = function (deps) {
     // path, name, ok, value }) as each case settles. Resolves with summary counts.
     // Never rejects.
     function run(plan, onResult) {
-        var total = plan.total;
-        var leaves = plan.leaves;
+        const total = plan.total;
+        const leaves = plan.leaves;
 
-        var passed = 0;
-        var failed = 0;
-        var index = 0;
+        let passed = 0;
+        let failed = 0;
+        let index = 0;
 
         return new Promise(function (resolve) {
-            var li = 0;
-            var prep = null;
-            var cases = null;
-            var ci = 0;
+            let li = 0;
+            let prep = null;
+            let cases = null;
+            let ci = 0;
 
             function finish() {
                 resolve({
@@ -106,7 +104,7 @@ window.Harness.createAutoRunner = function (deps) {
                     finish();
                     return;
                 }
-                var leaf = leaves[li];
+                const leaf = leaves[li];
                 if (prep === null) {
                     prep = runner.prepare(leaf);
                     cases = leaf.group.cases.filter(function (testCase) {
@@ -121,7 +119,7 @@ window.Harness.createAutoRunner = function (deps) {
                     step();
                     return;
                 }
-                var testCase = cases[ci];
+                const testCase = cases[ci];
                 ci++;
                 if (prep.kind === 'setupFailure') {
                     record(leaf, testCase, false, prep.error || 'setup failed (no object resolved)');
@@ -142,4 +140,4 @@ window.Harness.createAutoRunner = function (deps) {
         collect: collect,
         run: run
     };
-};
+}

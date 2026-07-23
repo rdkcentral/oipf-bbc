@@ -30,6 +30,8 @@ const GitRevisionPlugin = require('git-revision-webpack-plugin');
 const gitRevisionPlugin = new GitRevisionPlugin({branch: true});
 const CreateFileWebpack = require('create-file-webpack');
 const ESLintPlugin = require('eslint-webpack-plugin'); // replaced JSHint for WebPack 5v
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 const distributionDirName = 'dist';
 const distributionDirPath = path.resolve(__dirname, distributionDirName)
@@ -38,6 +40,7 @@ module.exports = function(env, argv) {
     let isDev = argv.mode === 'development';
 
     const config = {
+        name: 'oipf-bbc',
 
         entry: {
             'oipf-bbc': './lib/oipf/bbcOipfAndOsdk.js'
@@ -133,7 +136,82 @@ module.exports = function(env, argv) {
             */
         ]
     };
-    
 
-    return [smp.wrap(config)];
+    // Test app — a real HTML app (not a library), so it gets its own entry/output/
+    // plugins rather than sharing the lib config's libraryTarget/banner/versioning.
+    // The oipf-bbc library itself is deliberately never imported here: harness/
+    // loader.js resolves it at runtime (local bundled copy or platform-injected
+    // global), so `bbc`/`oipfObjectFactory`/`onesdk`/`getPrimaryDisplay` are just
+    // free globals as far as this bundle is concerned.
+    //
+    // withLib: whether to copy the built library (dist/stb/) into this build's own
+    // output (testapp/dist/stb/) so harness/loader.js's 'stb/oipf-bbc.js' fetch has
+    // something to find. Always on in dev (serve:testapp) so ?lib=local works
+    // locally; in production it's opt-in via `webpack --env withLib` (see the
+    // build:testapp:dev npm script) — the default production build stays
+    // standalone, relying on the platform to inject the library instead.
+    const libStbDir = path.resolve(__dirname, 'dist/stb');
+    const withLib = isDev || !!(env && env.withLib);
+    if (withLib && !require('fs').existsSync(libStbDir)) {
+        console.warn('Note: ' + libStbDir + ' not found — run `npm run build` first ' +
+            'so the test app has a local library copy to embed.');
+    }
+
+    const testAppConfig = {
+        name: 'testapp',
+        entry: {
+            testapp: './testapp/src/index.js'
+        },
+        resolve: {
+            modules: [path.resolve(__dirname, 'testapp'), 'node_modules']
+        },
+        output: {
+            filename: '[name].bundle.js',
+            path: path.resolve(__dirname, 'testapp/dist'),
+            publicPath: '',
+            clean: true
+        },
+        module: {
+            rules: [
+                {
+                    test: /\.css$/,
+                    use: [MiniCssExtractPlugin.loader, 'css-loader']
+                }
+            ]
+        },
+        optimization: {
+            minimizer: [
+                new TerserWebpackPlugin({ extractComments: false }),
+                new CssMinimizerPlugin({})
+            ]
+        },
+        plugins: [
+            new MiniCssExtractPlugin({ filename: '[name].css' }),
+            new HtmlWebpackPlugin({
+                template: path.resolve(__dirname, 'testapp/index.html'),
+                filename: 'index.html',
+                inject: 'body',
+                // Deployed to devices via the bolt package — keep it un-minified so the
+                // template's own license header survives in the built artifact (the JS/CSS
+                // bundles below get an equivalent banner since Terser strips comments).
+                minify: false
+            }),
+            new webpack.BannerPlugin({
+                banner: 'Copyright (c) 2026 Infosys. Licensed under the Apache License, Version 2.0.',
+                test: /\.(js|css)$/
+            }),
+            ...(withLib ? [
+                new CopyWebpackPlugin({
+                    patterns: [
+                        { from: libStbDir, to: 'stb', noErrorOnMissing: true }
+                    ]
+                })
+            ] : [])
+        ],
+        devServer: {
+            port: process.env.PORT || 8137
+        }
+    };
+
+    return [smp.wrap(config), testAppConfig];
 };

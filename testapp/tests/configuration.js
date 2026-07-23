@@ -18,38 +18,38 @@
  * Configuration feature, exercised via bbc / factory / DOM. The common member
  * across all three access types is the `configuration` property.
  */
-(function () {
-    harness.register({
-        path: [harness.INTERFACE, 'Configuration'],
-        accessors: {
-            bbc: function () {
-                return bbc.oipfConfiguration;
-            },
-            factory: function () {
-                return oipfObjectFactory.createConfigurationObject();
-            },
-            dom: harness.domObjectAccessor('application/oipfConfiguration', 'ta-configuration')
+import { harness } from 'harness/harness.js';
+
+harness.register({
+    path: [harness.INTERFACE, 'Configuration'],
+    accessors: {
+        bbc: function () {
+            return bbc.oipfConfiguration;
         },
-        cases: [
-            {
-                name: 'exposes the configuration property',
-                run: function (cfg) {
-                    if (!cfg) {
-                        throw new Error('object not available (accessor returned null)');
-                    }
-                    if (!('configuration' in cfg)) {
-                        throw new Error('missing property: configuration');
-                    }
-                    return 'configuration property present';
+        factory: function () {
+            return oipfObjectFactory.createConfigurationObject();
+        },
+        dom: harness.domObjectAccessor('application/oipfConfiguration', 'ta-configuration')
+    },
+    cases: [
+        {
+            name: 'exposes the configuration property',
+            run: function (cfg) {
+                if (!cfg) {
+                    throw new Error('object not available (accessor returned null)');
                 }
-            },
-            {
-                name: 'configuration (snapshot)',
-                run: function (cfg) {
-                    // Populated asynchronously from Firebolt during init; read current snapshot.
-                    return cfg.configuration;
+                if (!('configuration' in cfg)) {
+                    throw new Error('missing property: configuration');
                 }
+                return 'configuration property present';
             }
-        ]
-    });
-})();
+        },
+        {
+            name: 'configuration (snapshot)',
+            run: function (cfg) {
+                // Populated asynchronously from Firebolt during init; read current snapshot.
+                return cfg.configuration;
+            }
+        }
+    ]
+});

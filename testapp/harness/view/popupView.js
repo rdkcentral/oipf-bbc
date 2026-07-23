@@ -19,26 +19,26 @@
  * flat chronological list of case results, scrollable by the remote. The
  * controller owns when it opens/closes; this view owns its DOM and scrolling.
  */
-window.Harness = window.Harness || {};
+import { pretty, updateScrollHints } from 'harness/util.js';
 
-window.Harness.createPopupView = function () {
-    var SCROLL_STEP_PX = 80;
+export function createPopupView() {
+    const SCROLL_STEP_PX = 80;
 
-    var overlay = document.getElementById('popup');
-    var titleEl = document.getElementById('popupTitle');
-    var summaryEl = document.getElementById('popupSummary');
-    var scrollEl = document.getElementById('popupScroll');
-    var listEl = document.getElementById('popupList');
-    var footerEl = document.getElementById('popupFooter');
+    const overlay = document.getElementById('popup');
+    const titleEl = document.getElementById('popupTitle');
+    const summaryEl = document.getElementById('popupSummary');
+    const scrollEl = document.getElementById('popupScroll');
+    const listEl = document.getElementById('popupList');
+    const footerEl = document.getElementById('popupFooter');
 
-    var total = 0;
-    var done = 0;
-    var passed = 0;
-    var failed = 0;
-    var complete = false;
+    let total = 0;
+    let done = 0;
+    let passed = 0;
+    let failed = 0;
+    let complete = false;
 
     function updateHints() {
-        window.Harness.updateScrollHints('popupScroll', 'popupScrollUp', 'popupScrollDown');
+        updateScrollHints('popupScroll', 'popupScrollUp', 'popupScrollDown');
     }
 
     function refreshSummary() {
@@ -70,36 +70,36 @@ window.Harness.createPopupView = function () {
             failed++;
         }
 
-        var row = document.createElement('div');
+        const row = document.createElement('div');
         row.className = 'popupEntry ' + (entry.ok ? 'pass' : 'fail');
 
-        var badge = document.createElement('span');
+        const badge = document.createElement('span');
         badge.className = 'badge ' + (entry.ok ? 'pass' : 'fail');
         badge.textContent = entry.ok ? 'PASS' : 'FAIL';
         row.appendChild(badge);
 
-        var text = document.createElement('div');
+        const text = document.createElement('div');
         text.className = 'popupEntryText';
-        var path = document.createElement('span');
+        const path = document.createElement('span');
         path.className = 'popupPath';
         path.textContent = entry.path;
-        var name = document.createElement('span');
+        const name = document.createElement('span');
         name.className = 'popupName';
         name.textContent = entry.name;
         text.appendChild(path);
         text.appendChild(name);
         // Show the detail only for failures, to keep the list scannable.
         if (!entry.ok) {
-            var detail = document.createElement('span');
+            const detail = document.createElement('span');
             detail.className = 'popupDetail';
-            detail.textContent = window.Harness.pretty(entry.value);
+            detail.textContent = pretty(entry.value);
             text.appendChild(detail);
         }
         row.appendChild(text);
 
         // Stick to the bottom only if the user is already there — don't yank them
         // back down while they're scrolled up reading an earlier result mid-run.
-        var atBottom = scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 4;
+        const atBottom = scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 4;
         listEl.appendChild(row);
         refreshSummary();
         if (atBottom) {
@@ -110,7 +110,7 @@ window.Harness.createPopupView = function () {
 
     function markComplete(summary) {
         complete = true;
-        var bits = [summary.passed + ' passed', summary.failed + ' failed'];
+        const bits = [summary.passed + ' passed', summary.failed + ' failed'];
         if (summary.manualSkipped) {
             bits.push(summary.manualSkipped + ' manual skipped');
         }
@@ -143,4 +143,4 @@ window.Harness.createPopupView = function () {
         },
         updateHints: updateHints
     };
-};
+}

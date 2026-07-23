@@ -19,69 +19,69 @@
  * directly under the Factory branch rather than being expanded per interface
  * because isObjectSupported is a factory method with no bbc or DOM equivalent.
  */
-(function () {
-    harness.register({
-        path: ['Factory', 'isObjectSupported'],
-        cases: [
-            {
-                name: 'method is present on oipfObjectFactory',
-                run: function () {
-                    if (typeof oipfObjectFactory.isObjectSupported !== 'function') {
-                        throw new Error('isObjectSupported is not a function on oipfObjectFactory');
-                    }
-                    return 'isObjectSupported present';
+import { harness } from 'harness/harness.js';
+
+harness.register({
+    path: ['Factory', 'isObjectSupported'],
+    cases: [
+        {
+            name: 'method is present on oipfObjectFactory',
+            run: function () {
+                if (typeof oipfObjectFactory.isObjectSupported !== 'function') {
+                    throw new Error('isObjectSupported is not a function on oipfObjectFactory');
                 }
-            },
-            {
-                name: 'returns true for video/broadcast',
-                run: function () {
-                    var result = oipfObjectFactory.isObjectSupported('video/broadcast');
-                    if (result !== true) {
-                        throw new Error('expected true, got: ' + result);
-                    }
-                    return result;
-                }
-            },
-            {
-                name: 'returns true for application/oipfApplicationManager',
-                run: function () {
-                    var result = oipfObjectFactory.isObjectSupported('application/oipfApplicationManager');
-                    if (result !== true) {
-                        throw new Error('expected true, got: ' + result);
-                    }
-                    return result;
-                }
-            },
-            {
-                name: 'returns true for application/oipfConfiguration',
-                run: function () {
-                    var result = oipfObjectFactory.isObjectSupported('application/oipfConfiguration');
-                    if (result !== true) {
-                        throw new Error('expected true, got: ' + result);
-                    }
-                    return result;
-                }
-            },
-            {
-                name: 'returns false for an unknown MIME type',
-                run: function () {
-                    var result = oipfObjectFactory.isObjectSupported('application/unknown');
-                    if (result !== false) {
-                        throw new Error('expected false, got: ' + result);
-                    }
-                    return result;
-                }
-            },
-            {
-                name: 'returns false for an empty string',
-                run: function () {
-                    var result = oipfObjectFactory.isObjectSupported('');
-                    if (result !== false) {
-                        throw new Error('expected false, got: ' + result);
-                    }
-                    return result;
-                }
+                return 'isObjectSupported present';
             }
-        ]
-    });
-})();
+        },
+        {
+            name: 'returns true for video/broadcast',
+            run: function () {
+                const result = oipfObjectFactory.isObjectSupported('video/broadcast');
+                if (result !== true) {
+                    throw new Error('expected true, got: ' + result);
+                }
+                return result;
+            }
+        },
+        {
+            name: 'returns true for application/oipfApplicationManager',
+            run: function () {
+                const result = oipfObjectFactory.isObjectSupported('application/oipfApplicationManager');
+                if (result !== true) {
+                    throw new Error('expected true, got: ' + result);
+                }
+                return result;
+            }
+        },
+        {
+            name: 'returns true for application/oipfConfiguration',
+            run: function () {
+                const result = oipfObjectFactory.isObjectSupported('application/oipfConfiguration');
+                if (result !== true) {
+                    throw new Error('expected true, got: ' + result);
+                }
+                return result;
+            }
+        },
+        {
+            name: 'returns false for an unknown MIME type',
+            run: function () {
+                const result = oipfObjectFactory.isObjectSupported('application/unknown');
+                if (result !== false) {
+                    throw new Error('expected false, got: ' + result);
+                }
+                return result;
+            }
+        },
+        {
+            name: 'returns false for an empty string',
+            run: function () {
+                const result = oipfObjectFactory.isObjectSupported('');
+                if (result !== false) {
+                    throw new Error('expected false, got: ' + result);
+                }
+                return result;
+            }
+        }
+    ]
+});
