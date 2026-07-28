@@ -18,70 +18,84 @@
  * Resolves which library instance the harness tests against, supporting the two
  * meta environments:
  *
- *   local  — this app loads its own bundled copy (../dist/stb/oipf-bbc.js).
+ *   local  — this app loads its own bundled copy (stb/oipf-bbc.js, relative to
+ *            the test app's own root — see LIB_SRC below).
  *   auto   — the platform/STB injects the OIPF library globally before our
  *            scripts run; we must NOT load a second copy.
  *
  * Mode defaults to `auto` (the most common case going forward — the library is
  * injected by the platform). Pass ?lib=local to instead load the bundled copy.
+ *
+ * This is deliberately NOT a static/dynamic `import` of the library: which
+ * environment is in play can only be decided at runtime (feature-detection +
+ * polling), and the platform-injected copy doesn't exist as a module at build
+ * time at all — it's a global the platform attaches to `window` before our
+ * bundle runs. `load()` is called last by the entry point, once every test
+ * module has registered.
  */
-(function () {
-    var LIB_SRC = '../dist/stb/oipf-bbc.js';
-    var AUTO_POLL_INTERVAL_MS = 100;
-    var AUTO_POLL_TIMEOUT_MS = 3000;
+import { harness } from './harness.js';
 
-    var params = new URLSearchParams(window.location.search);
+// Relative to the test app's own served root. The library is built separately
+// (dist/stb/, outside testapp/ in source form) — webpack.config.js's testapp
+// config copies it into this build's own output at stb/ (a CopyWebpackPlugin
+// step, always on in dev, opt-in via --env withLib in production) so this path
+// resolves the same way in both.
+const LIB_SRC = 'stb/oipf-bbc.js';
+const AUTO_POLL_INTERVAL_MS = 100;
+const AUTO_POLL_TIMEOUT_MS = 3000;
 
-    function librariesPresent() {
-        // Detect on oipfObjectFactory only — it is the one global common to both
-        // the oipf-bbc library and the legacy library we compare against.
-        return typeof window.oipfObjectFactory !== 'undefined';
+function librariesPresent() {
+    // Detect on oipfObjectFactory only — it is the one global common to both
+    // the oipf-bbc library and the legacy library we compare against.
+    return typeof window.oipfObjectFactory !== 'undefined';
+}
+
+function start(mode) {
+    harness.init({ mode: mode, onesdk: window.onesdk });
+}
+
+function loadLocal() {
+    const script = document.createElement('script');
+    script.src = LIB_SRC;
+    script.onload = function () {
+        start('local');
+    };
+    script.onerror = function () {
+        harness.fatal('Failed to load local library from ' + LIB_SRC);
+    };
+    document.body.appendChild(script);
+}
+
+function loadAuto() {
+    if (librariesPresent()) {
+        start('auto');
+        return;
     }
-
-    function start(mode) {
-        window.harness.init({ mode: mode, onesdk: window.onesdk });
-    }
-
-    function loadLocal() {
-        var script = document.createElement('script');
-        script.src = LIB_SRC;
-        script.onload = function () {
-            start('local');
-        };
-        script.onerror = function () {
-            window.harness.fatal('Failed to load local library from ' + LIB_SRC);
-        };
-        document.body.appendChild(script);
-    }
-
-    function loadAuto() {
+    // The platform may inject asynchronously; poll briefly before giving up.
+    let waited = 0;
+    const timer = window.setInterval(function () {
         if (librariesPresent()) {
+            window.clearInterval(timer);
             start('auto');
-            return;
+        } else if ((waited += AUTO_POLL_INTERVAL_MS) >= AUTO_POLL_TIMEOUT_MS) {
+            window.clearInterval(timer);
+            harness.fatal(
+                'Library not found in auto-loaded environment (waited ' +
+                    AUTO_POLL_TIMEOUT_MS +
+                    'ms). Use ?lib=local to test the bundled copy.'
+            );
         }
-        // The platform may inject asynchronously; poll briefly before giving up.
-        var waited = 0;
-        var timer = window.setInterval(function () {
-            if (librariesPresent()) {
-                window.clearInterval(timer);
-                start('auto');
-            } else if ((waited += AUTO_POLL_INTERVAL_MS) >= AUTO_POLL_TIMEOUT_MS) {
-                window.clearInterval(timer);
-                window.harness.fatal(
-                    'Library not found in auto-loaded environment (waited ' +
-                        AUTO_POLL_TIMEOUT_MS +
-                        'ms). Use ?lib=local to test the bundled copy.'
-                );
-            }
-        }, AUTO_POLL_INTERVAL_MS);
-    }
+    }, AUTO_POLL_INTERVAL_MS);
+}
 
-    var requested = params.get('lib');
-    var mode = requested === 'local' ? 'local' : 'auto';
+export function load() {
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get('lib');
+    const mode = requested === 'local' ? 'local' : 'auto';
 
     if (mode === 'auto') {
         loadAuto();
     } else {
         loadLocal();
     }
-})();
+}

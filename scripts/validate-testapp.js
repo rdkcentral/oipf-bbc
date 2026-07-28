@@ -15,9 +15,14 @@
  */
 
 /*
- * Basic syntax validation for the test app's JS (which the Webpack build and
- * Mocha tests don't cover). Pure Node so it runs cross-platform — vm.Script only
+ * Basic syntax validation for the repo's plain-Node build/deploy scripts (which
+ * Mocha doesn't cover). Pure Node so it runs cross-platform — vm.Script only
  * parses, never executes, so browser globals like window/document don't matter.
+ *
+ * testapp/harness and testapp/tests are no longer checked here: they're ES
+ * modules now (import/export, which vm.Script can't parse as a plain script
+ * anyway) and are compiled — and so syntax/resolution-checked, more strongly
+ * than this ever did — by `webpack --config-name testapp`.
  *
  *   node scripts/validate-testapp.js   (also: npm run validate:testapp)
  */
@@ -26,7 +31,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.resolve(__dirname, '..');
-const DIRS = ['testapp/harness', 'testapp/tests', 'scripts'];
+const DIRS = ['scripts'];
 
 let checked = 0;
 let failures = 0;

@@ -20,17 +20,15 @@
  * library objects are single-instance per page load with no teardown — re-opening
  * a group must reuse the object rather than rebuild it (which would throw).
  */
-window.Harness = window.Harness || {};
-
-window.Harness.createRunner = function () {
-    var setupCache = {};
+export function createRunner() {
+    const setupCache = {};
 
     // Decides what a leaf should show, resolving (and caching) its setup context:
     //   { kind: 'unavailable', message }   — interface type with no accessor
     //   { kind: 'setupFailure', error }    — setup threw or yielded nothing
     //   { kind: 'cases', cases, ctx }      — ready to run
     function prepare(node) {
-        var group = node.group;
+        const group = node.group;
         if (group.naMessage) {
             return { kind: 'unavailable', message: group.naMessage };
         }
@@ -40,7 +38,7 @@ window.Harness.createRunner = function () {
         if (Object.prototype.hasOwnProperty.call(setupCache, node.id)) {
             return { kind: 'cases', cases: group.cases || [], ctx: setupCache[node.id] };
         }
-        var ctx;
+        let ctx;
         try {
             ctx = group.setup();
         } catch (err) {
@@ -75,4 +73,4 @@ window.Harness.createRunner = function () {
         prepare: prepare,
         execute: execute
     };
-};
+}

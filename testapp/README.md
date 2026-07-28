@@ -25,7 +25,7 @@ All commands are run from the repository root.
 npm run serve:testapp
 ```
 
-Starts a local HTTP server on **port 8137** by default (override with `PORT`). Open `http://localhost:8137/testapp/` in a browser or on the STB.
+Runs `webpack serve` (the `testapp` config in the root `webpack.config.js`) on **port 8137** by default (override with `PORT`). Open `http://localhost:8137/` in a browser or on the STB. Rebuilds on save and live-reloads the page.
 
 ### Build for deployment
 
@@ -37,7 +37,7 @@ npm run build:testapp
 npm run build:testapp:dev
 ```
 
-Both commands produce a minified JS bundle and a CSS file under `testapp/dist/`.
+Each runs a production `webpack` build, bundling `testapp/src/index.js`, its ES module dependency graph under `harness/`/`tests/`, and any npm packages they import — producing a minified JS bundle, a CSS file, and `index.html` under `testapp/dist/`. The `:dev` variant additionally copies the built `oipf-bbc` library (`dist/stb/`, so run `npm run build` first) into `testapp/dist/stb/` for a self-contained artifact; the standalone variant relies on the platform to inject the library instead.
 
 ### Validate syntax (no browser required)
 
@@ -45,7 +45,7 @@ Both commands produce a minified JS bundle and a CSS file under `testapp/dist/`.
 npm run validate:testapp
 ```
 
-Runs all testapp JavaScript through Node's `vm.Script` to catch syntax errors before deployment.
+Runs the repo's plain-Node build/deploy scripts under `scripts/` through `vm.Script` to catch syntax errors. `testapp/harness` and `testapp/tests` are ES modules now — they're compiled (and so syntax/resolution-checked) by the webpack build itself instead.
 
 ---
 

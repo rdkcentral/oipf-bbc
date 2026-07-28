@@ -21,23 +21,23 @@
  * controller owns app state (active pane, reload-pending); this view reports row
  * interactions back through the methods it exposes.
  */
-window.Harness = window.Harness || {};
+import { pretty as prettyValue, updateScrollHints } from 'harness/util.js';
 
-window.Harness.createResultView = function () {
-    var DATA_SCROLL_STEP_PX = 60;
+export function createResultView() {
+    const DATA_SCROLL_STEP_PX = 60;
 
-    var listEl = document.getElementById('resultsList');
-    var titleEl = document.getElementById('resultsTitle');
-    var scrollEl = document.getElementById('resultsScroll');
+    const listEl = document.getElementById('resultsList');
+    const titleEl = document.getElementById('resultsTitle');
+    const scrollEl = document.getElementById('resultsScroll');
 
-    var resultIndex = 0;
-    var inResult = false;
-    var active = false; // true while the results pane holds true focus
+    let resultIndex = 0;
+    let inResult = false;
+    let active = false; // true while the results pane holds true focus
 
-    var pretty = window.Harness.pretty;
+    const pretty = prettyValue;
 
     function updateHints() {
-        window.Harness.updateScrollHints('resultsScroll', 'scrollUp', 'scrollDown');
+        updateScrollHints('resultsScroll', 'scrollUp', 'scrollDown');
     }
 
     // Focusable items in DOM order: case rows plus the reload button (the note is
@@ -52,7 +52,7 @@ window.Harness.createResultView = function () {
     }
 
     function focusedData() {
-        var el = focusedEl();
+        const el = focusedEl();
         return el && el.classList.contains('caseRow') ? el.querySelector('.caseData') : null;
     }
 
@@ -68,7 +68,7 @@ window.Harness.createResultView = function () {
     // can't double-fire from both a click and OK, then runs it.
     function fireArmed(row) {
         if (isArmed(row)) {
-            var fire = row.__armed;
+            const fire = row.__armed;
             row.__armed = null;
             fire();
         }
@@ -78,16 +78,16 @@ window.Harness.createResultView = function () {
     // inside a result, marks its data block as the active scroll target. Snaps to
     // the true extremes for first/last so the viewport can fully reach top/bottom.
     function syncFocus() {
-        var els = focusables();
-        for (var i = 0; i < els.length; i++) {
-            var on = active && i === resultIndex;
+        const els = focusables();
+        for (let i = 0; i < els.length; i++) {
+            const on = active && i === resultIndex;
             els[i].classList.toggle('focused', on);
             if (els[i].classList.contains('caseRow')) {
                 els[i].classList.toggle('scrolling', on && inResult);
             }
         }
         titleEl.className = active ? 'focused' : '';
-        var current = els[resultIndex];
+        const current = els[resultIndex];
         if (active && current && scrollEl) {
             if (resultIndex === 0) {
                 scrollEl.scrollTop = 0;
@@ -101,17 +101,17 @@ window.Harness.createResultView = function () {
     }
 
     function appendCase(name) {
-        var row = document.createElement('div');
+        const row = document.createElement('div');
         row.className = 'caseRow';
 
-        var head = document.createElement('div');
+        const head = document.createElement('div');
         head.className = 'caseHead';
 
-        var badge = document.createElement('span');
+        const badge = document.createElement('span');
         badge.className = 'badge running';
         badge.textContent = 'RUN';
 
-        var label = document.createElement('span');
+        const label = document.createElement('span');
         label.className = 'caseName';
         label.textContent = name;
 
@@ -119,7 +119,7 @@ window.Harness.createResultView = function () {
         head.appendChild(label);
         row.appendChild(head);
 
-        var data = document.createElement('pre');
+        const data = document.createElement('pre');
         data.className = 'caseData';
         data.style.display = 'none';
         row.appendChild(data);
@@ -174,7 +174,7 @@ window.Harness.createResultView = function () {
 
     // A single inert "not available" row (can't be entered/scrolled).
     function showUnavailable(message) {
-        var view = appendCase('not supported');
+        const view = appendCase('not supported');
         view.row.__inert = true;
         view.settle(false, message);
     }
@@ -183,17 +183,17 @@ window.Harness.createResultView = function () {
     // the reload button is a focusable item (see focusables()) so reload only
     // fires when the button itself is focused and activated — never from the row.
     function showReloadPrompt(error, onReload) {
-        var errorView = appendCase('setup');
+        const errorView = appendCase('setup');
         errorView.row.__inert = true;
         errorView.settle(false, error || 'Object not available for this access type.');
 
-        var note = document.createElement('div');
+        const note = document.createElement('div');
         note.className = 'reloadNote';
         note.textContent =
             'This object may be limited to one instance per page load. Navigate down to ' +
             'the button and press OK to reload and test a different access type.';
 
-        var button = document.createElement('div');
+        const button = document.createElement('div');
         button.className = 'reloadButton';
         button.textContent = '↻ Reload page';
         button.__reload = onReload; // marks this as the focusable reload action
@@ -226,7 +226,7 @@ window.Harness.createResultView = function () {
     // OK/Right on the focused item: reload (button), fire an armed case, ignore an
     // inert row, or otherwise enter data-scroll mode if the row's data overflows.
     function activateFocused() {
-        var el = focusedEl();
+        const el = focusedEl();
         if (!el) {
             return;
         }
@@ -247,7 +247,7 @@ window.Harness.createResultView = function () {
     }
 
     function scrollData(direction) {
-        var data = focusedData();
+        const data = focusedData();
         if (data) {
             data.scrollTop += direction * DATA_SCROLL_STEP_PX;
         }
@@ -274,4 +274,4 @@ window.Harness.createResultView = function () {
         exitData: exitData,
         updateHints: updateHints
     };
-};
+}

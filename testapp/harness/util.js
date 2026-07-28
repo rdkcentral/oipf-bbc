@@ -15,16 +15,13 @@
  */
 
 /*
- * Shared DOM helpers for the harness. Loaded first; everything else attaches to
- * the window.Harness namespace and the bootstrap (harness.js) assembles the
- * public window.harness facade from these pieces.
+ * Shared DOM helpers for the harness.
  */
-window.Harness = window.Harness || {};
 
 // Formats a test result value for display. Pure (no DOM) — shared by the result
 // and popup views. Errors show name/message (+ optional detail); other values are
 // pretty-printed JSON, falling back to String() for anything non-serialisable.
-window.Harness.pretty = function (value) {
+export function pretty(value) {
     if (value instanceof Error) {
         return value.name + ': ' + value.message + (value.detail ? '\n' + value.detail : '');
     }
@@ -36,23 +33,23 @@ window.Harness.pretty = function (value) {
     } catch (e) {
         return String(value);
     }
-};
+}
 
 // Fades in the up/down indicators when a scroll container has off-screen content
 // in that direction. Shared by the menu and results views.
-window.Harness.updateScrollHints = function (scrollerId, upId, downId) {
-    var scroller = document.getElementById(scrollerId);
+export function updateScrollHints(scrollerId, upId, downId) {
+    const scroller = document.getElementById(scrollerId);
     if (!scroller) {
         return;
     }
-    var atTop = scroller.scrollTop <= 0;
-    var atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
-    var up = document.getElementById(upId);
-    var down = document.getElementById(downId);
+    const atTop = scroller.scrollTop <= 0;
+    const atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
+    const up = document.getElementById(upId);
+    const down = document.getElementById(downId);
     if (up) {
         up.classList.toggle('visible', !atTop);
     }
     if (down) {
         down.classList.toggle('visible', !atBottom);
     }
-};
+}

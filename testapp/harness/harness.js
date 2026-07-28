@@ -16,65 +16,72 @@
 
 /*
  * Bootstrap — assembles the MVC-light pieces (model: tree + runner; views: menu,
- * result, log; controller) and exposes the public window.harness facade.
+ * result, log; controller) and exports the public harness facade.
  *
- * Load order (see index.html): util → log → tree → runner → menuView →
- * resultView → controller → this file → test files → loader. Test groups then
- * self-register via harness.register({ path, accessors, cases }); loader.js calls
- * harness.init() once the library is resolved (local ../dist copy or platform).
+ * Test files import this module and self-register via harness.register({ path,
+ * accessors, cases }); the entry point (src/index.js) imports every test module
+ * (for its registration side effect) and then loader.js last, which calls
+ * harness.init() once the library is resolved (local stb/ copy or platform).
  *
  * Everything renders to the screen: a drill-down menu, a results pane, and a log
  * pane that mirrors console.log/error (the target STB browser has no devtools).
  */
-window.harness = (function () {
-    var tree = window.Harness.createTree();
-    var runner = window.Harness.createRunner();
-    var autoRunner = window.Harness.createAutoRunner({ tree: tree, runner: runner });
-    var logView = window.Harness.createLogView();
-    var resultView = window.Harness.createResultView();
-    var popupView = window.Harness.createPopupView();
+import { createTree } from './model/tree.js';
+import { createRunner } from './model/runner.js';
+import { createAutoRunner } from './model/autorun.js';
+import { createLogView } from './view/log.js';
+import { createMenuView } from './view/menuView.js';
+import { createResultView } from './view/resultView.js';
+import { createPopupView } from './view/popupView.js';
+import { createController } from './controller/controller.js';
 
-    var controller;
-    var menuView = window.Harness.createMenuView({
-        isLeaf: tree.isLeaf,
-        onActivate: function (child) {
-            controller.activate(child);
-        }
-    });
-    controller = window.Harness.createController({
-        tree: tree,
-        runner: runner,
-        autoRunner: autoRunner,
-        logView: logView,
-        menuView: menuView,
-        resultView: resultView,
-        popupView: popupView
-    });
+const tree = createTree();
+const runner = createRunner();
+const autoRunner = createAutoRunner({ tree: tree, runner: runner });
+const logView = createLogView();
+const resultView = createResultView();
+const popupView = createPopupView();
 
-    // Test-authoring helper: returns an accessor (a setup function) that creates a
-    // DOM <object> of the given type and resolves it through the factory's
-    // getElementById override. Recreates on each call to avoid DOM build-up.
-    function domObjectAccessor(type, id) {
-        return function () {
-            var existing = document.getElementById(id);
-            if (existing && existing.parentNode) {
-                existing.parentNode.removeChild(existing);
-            }
-            var obj = document.createElement('object');
-            obj.type = type;
-            obj.id = id;
-            document.body.appendChild(obj);
-            // May return null off-STB: the override swallows instantiation errors.
-            return document.getElementById(id);
-        };
+let controller;
+const menuView = createMenuView({
+    isLeaf: tree.isLeaf,
+    onActivate: function (child) {
+        controller.activate(child);
     }
+});
+controller = createController({
+    tree: tree,
+    runner: runner,
+    autoRunner: autoRunner,
+    logView: logView,
+    menuView: menuView,
+    resultView: resultView,
+    popupView: popupView
+});
 
-    return {
-        register: tree.register,
-        INTERFACE: tree.INTERFACE,
-        domObjectAccessor: domObjectAccessor,
-        init: controller.init,
-        fatal: controller.fatal,
-        log: logView.append
+// Test-authoring helper: returns an accessor (a setup function) that creates a
+// DOM <object> of the given type and resolves it through the factory's
+// getElementById override. Recreates on each call to avoid DOM build-up.
+function domObjectAccessor(type, id) {
+    return function () {
+        const existing = document.getElementById(id);
+        if (existing && existing.parentNode) {
+            existing.parentNode.removeChild(existing);
+        }
+        const obj = document.createElement('object');
+        obj.type = type;
+        obj.id = id;
+        document.body.appendChild(obj);
+        // May return null off-STB: the override swallows instantiation errors.
+        return document.getElementById(id);
     };
-})();
+}
+
+export const harness = {
+    register: tree.register,
+    INTERFACE: tree.INTERFACE,
+    domObjectAccessor: domObjectAccessor,
+    init: controller.init,
+    fatal: controller.fatal,
+    log: logView.append
+};

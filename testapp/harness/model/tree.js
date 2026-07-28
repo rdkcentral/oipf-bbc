@@ -20,21 +20,19 @@
  * group). Nodes may carry a `subtitle` (second menu line) and a `caption` (help
  * text shown above this node's children). DOM-free — unit-testable headless.
  */
-window.Harness = window.Harness || {};
-
-window.Harness.createTree = function () {
+export function createTree() {
     // Placeholder token used in a register() path to mean "expand across every
     // interface type". INTERFACE_TYPES is the canonical set and ordering; each
     // `description` explains the access path to a newcomer (shown as the interface
     // node's menu subtitle and as the caption once drilled into it).
-    var INTERFACE = { interfacePlaceholder: true };
-    var INTERFACE_TYPES = [
+    const INTERFACE = { interfacePlaceholder: true };
+    const INTERFACE_TYPES = [
         { key: 'bbc', label: 'bbc', description: 'the window.bbc facade API' },
         { key: 'factory', label: 'Factory', description: 'objects from oipfObjectFactory.createXObject()' },
         { key: 'dom', label: 'DOM', description: '<object> elements resolved via getElementById' }
     ];
 
-    var root = {
+    const root = {
         label: 'Home',
         children: [],
         index: {},
@@ -51,7 +49,7 @@ window.Harness.createTree = function () {
 
     function childNode(parent, label) {
         if (!parent.index[label]) {
-            var node = { label: label, children: [], index: {}, group: null, id: null, subtitle: null, caption: null };
+            const node = { label: label, children: [], index: {}, group: null, id: null, subtitle: null, caption: null };
             parent.index[label] = node;
             parent.children.push(node);
         }
@@ -62,15 +60,15 @@ window.Harness.createTree = function () {
     // on a path collision — where a leaf and a branch would share a node — since
     // that leaves one of them unreachable (the leaf wins; see isLeaf).
     function insertLeaf(pathArr, group) {
-        var id = pathArr.join(' / ');
+        const id = pathArr.join(' / ');
         pathArr.forEach(function (segment, i) {
             if (typeof segment !== 'string') {
                 console.warn('Menu path "' + id + '" has a non-string segment at index ' + i +
                     ' — likely an unexpanded INTERFACE placeholder or a mis-authored path.');
             }
         });
-        var node = root;
-        for (var i = 0; i < pathArr.length; i++) {
+        let node = root;
+        for (let i = 0; i < pathArr.length; i++) {
             node = childNode(node, pathArr[i]);
             if (i < pathArr.length - 1 && node.group) {
                 console.warn('Menu path collision: "' + id + '" nests under a ' +
@@ -90,13 +88,13 @@ window.Harness.createTree = function () {
     // expanded once per interface type (wiring the matching accessor; a missing one
     // becomes an N/A leaf). A path without it is placed literally (e.g. onesdk).
     function register(spec) {
-        var path = spec.path || [];
-        var ifaceIdx = path.indexOf(INTERFACE);
+        const path = spec.path || [];
+        const ifaceIdx = path.indexOf(INTERFACE);
         if (ifaceIdx === -1) {
             // A literal path whose first segment is an interface label almost
             // certainly meant to use INTERFACE: as written it merges into the
             // expanded interface branch as a leaf with no accessor wiring.
-            var collides = INTERFACE_TYPES.some(function (type) {
+            const collides = INTERFACE_TYPES.some(function (type) {
                 return type.label === path[0];
             });
             if (collides) {
@@ -108,9 +106,9 @@ window.Harness.createTree = function () {
             return;
         }
         INTERFACE_TYPES.forEach(function (type) {
-            var concrete = path.slice();
+            const concrete = path.slice();
             concrete[ifaceIdx] = type.label;
-            var accessor = spec.accessors && spec.accessors[type.key];
+            const accessor = spec.accessors && spec.accessors[type.key];
             if (accessor) {
                 insertLeaf(concrete, { setup: accessor, cases: spec.cases });
             } else {
@@ -120,7 +118,7 @@ window.Harness.createTree = function () {
             // subtitle in the parent list, caption once drilled in. (ifaceIdx 0 =
             // top level, the supported case; deeper placeholders just stay plain.)
             if (ifaceIdx === 0) {
-                var ifaceNode = root.index[type.label];
+                const ifaceNode = root.index[type.label];
                 ifaceNode.subtitle = type.description;
                 ifaceNode.caption = 'Tests using ' + type.description + '.';
             }
@@ -131,19 +129,19 @@ window.Harness.createTree = function () {
     // one autorun leaf per existing top-level category. Each leaf's group carries
     // { autorun: categoryNode } — the controller runs that subtree instead of
     // opening it. Call once after all test files have registered (e.g. in init).
-    var RUN_ALL_LABEL = '» Run all tests';
+    const RUN_ALL_LABEL = '» Run all tests';
     function buildRunAllMenu() {
         if (root.index[RUN_ALL_LABEL]) {
             return;
         }
-        var categories = root.children.slice(); // snapshot before adding the branch
+        const categories = root.children.slice(); // snapshot before adding the branch
         if (!categories.length) {
             return;
         }
-        var branch = childNode(root, RUN_ALL_LABEL);
+        const branch = childNode(root, RUN_ALL_LABEL);
         branch.caption = 'Choose a test area to run automatically; results appear in a popup.';
         categories.forEach(function (category) {
-            var leaf = childNode(branch, category.label);
+            const leaf = childNode(branch, category.label);
             leaf.group = { autorun: category };
             leaf.id = RUN_ALL_LABEL + ' / ' + category.label;
             leaf.subtitle = 'Every non-manual test under ' + category.label;
@@ -160,4 +158,4 @@ window.Harness.createTree = function () {
         buildRunAllMenu: buildRunAllMenu,
         INTERFACE: INTERFACE
     };
-};
+}
