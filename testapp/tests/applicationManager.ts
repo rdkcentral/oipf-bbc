@@ -47,7 +47,7 @@ harness.register<ApplicationManager>({
         {
             name: 'getOwnerApplication()',
             run: function (am) {
-                const app = am.getOwnerApplication();
+                const app = am.getOwnerApplication(document);
                 if (!app) {
                     throw new Error('getOwnerApplication() returned a falsy value');
                 }
@@ -57,7 +57,7 @@ harness.register<ApplicationManager>({
         {
             name: 'owner application properties',
             run: function (am) {
-                const app = am.getOwnerApplication();
+                const app = am.getOwnerApplication(document);
                 if (!app) {
                     throw new Error('getOwnerApplication() returned a falsy value');
                 }
@@ -79,7 +79,10 @@ harness.register<ApplicationManager>({
         {
             name: 'privateData.keyset.setValue(ALL)',
             run: function (am) {
-                const app = am.getOwnerApplication();
+                const app = am.getOwnerApplication(document);
+                if (!app) {
+                    throw new Error('getOwnerApplication() returned a falsy value');
+                }
                 return { calculatedMask: app.privateData.keyset.setValue(0xffffffff) };
             }
         },
@@ -88,7 +91,11 @@ harness.register<ApplicationManager>({
             name: 'createApplication(iPlayer) — launches another app',
             manual: true,
             run: function (am) {
-                am.getOwnerApplication().createApplication('https://www.live.bbctvapps.co.uk/tap/iplayer');
+                const app = am.getOwnerApplication(document);
+                if (!app) {
+                    throw new Error('getOwnerApplication() returned a falsy value');
+                }
+                app.createApplication('https://www.live.bbctvapps.co.uk/tap/iplayer');
                 return 'createApplication called — launching uk.co.bbc.iplayer';
             }
         },
@@ -97,7 +104,11 @@ harness.register<ApplicationManager>({
             name: 'destroyApplication() — closes this app',
             manual: true,
             run: function (am) {
-                am.getOwnerApplication().destroyApplication();
+                const app = am.getOwnerApplication(document);
+                if (!app) {
+                    throw new Error('getOwnerApplication() returned a falsy value');
+                }
+                app.destroyApplication();
                 return 'destroyApplication called — closing app';
             }
         }

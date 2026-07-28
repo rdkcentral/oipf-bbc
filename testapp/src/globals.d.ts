@@ -67,7 +67,11 @@ interface ChannelConfig {
 }
 
 interface VideoBroadcast {
-    getChannelConfig(): Promise<ChannelConfig>;
+    // Spec (OIPF DAE v2.3 §7.13.1.3) declares getChannelConfig() and
+    // bindToCurrentChannel() synchronous. The real lib backs them with
+    // Firebolt calls, so they're genuinely async here — an intentional
+    // platform adaptation, not a spec-conformance bug.
+    getChannelConfig(): Promise<ChannelConfig | null>;
     bindToCurrentChannel(): Promise<Channel | null | undefined>;
     setChannel(channel: Channel): void;
     getComponents(): Promise<OipfCollection<unknown> | null | undefined>;
@@ -95,7 +99,7 @@ interface OwnerApplication {
 }
 
 interface ApplicationManager {
-    getOwnerApplication(): OwnerApplication;
+    getOwnerApplication(document: Document): OwnerApplication | null;
 }
 
 interface Configuration {

@@ -53,8 +53,8 @@ describe('oipf/configurationContext', () => {
             const ctx = loadContext();
 
             expect(ctx.getConfiguration()).to.deep.equal({
-                preferedAudioLanguage: 'eng',
-                preferedSubtitleLanguage: 'eng',
+                preferredAudioLanguage: 'eng',
+                preferredSubtitleLanguage: 'eng',
                 countryId: 'GBR',
                 subtitlesEnabled: false,
                 audioDescriptionEnabled: false
@@ -82,7 +82,7 @@ describe('oipf/configurationContext', () => {
             ctx.init();
             await flush();
 
-            expect(ctx.getConfiguration().preferedAudioLanguage).to.equal('eng');
+            expect(ctx.getConfiguration().preferredAudioLanguage).to.equal('eng');
         });
 
         it('takes the first preferred subtitle language from closedCaptionsSettings', async () => {
@@ -96,7 +96,7 @@ describe('oipf/configurationContext', () => {
             ctx.init();
             await flush();
 
-            expect(ctx.getConfiguration().preferedSubtitleLanguage).to.equal('eng');
+            expect(ctx.getConfiguration().preferredSubtitleLanguage).to.equal('eng');
         });
 
         it('updates subtitlesEnabled from the closedCaptionsSettings.enabled boolean', async () => {
@@ -156,7 +156,7 @@ describe('oipf/configurationContext', () => {
             ctx.init();
             await flush();
 
-            expect(ctx.getConfiguration().preferedAudioLanguage).to.equal('eng');
+            expect(ctx.getConfiguration().preferredAudioLanguage).to.equal('eng');
         });
 
         it('keeps default subtitlesEnabled when Firebolt returns a non-boolean', async () => {
@@ -199,8 +199,8 @@ describe('oipf/configurationContext', () => {
 
             //defaults intact
             expect(ctx.getConfiguration()).to.deep.equal({
-                preferedAudioLanguage: 'eng',
-                preferedSubtitleLanguage: 'eng',
+                preferredAudioLanguage: 'eng',
+                preferredSubtitleLanguage: 'eng',
                 countryId: 'GBR',
                 subtitlesEnabled: false,
                 audioDescriptionEnabled: false
@@ -220,7 +220,7 @@ describe('oipf/configurationContext', () => {
             const after = ctx.getConfiguration();
 
             expect(after).to.equal(before); //same reference
-            expect(before.preferedAudioLanguage).to.equal('fra'); //and mutated in place
+            expect(before.preferredAudioLanguage).to.equal('fra'); //and mutated in place
         });
     });
 });
