@@ -33,7 +33,7 @@
  * bundle runs. `load()` is called last by the entry point, once every test
  * module has registered.
  */
-import { harness } from './harness.js';
+import { harness } from 'harness/harness';
 
 // Relative to the test app's own served root. The library is built separately
 // (dist/stb/, outside testapp/ in source form) — webpack.config.js's testapp
@@ -44,13 +44,13 @@ const LIB_SRC = 'stb/oipf-bbc.js';
 const AUTO_POLL_INTERVAL_MS = 100;
 const AUTO_POLL_TIMEOUT_MS = 3000;
 
-function librariesPresent() {
+function librariesPresent(): boolean {
     // Detect on oipfObjectFactory only — it is the one global common to both
     // the oipf-bbc library and the legacy library we compare against.
     return typeof window.oipfObjectFactory !== 'undefined';
 }
 
-function start(mode) {
+function start(mode: string) {
     harness.init({ mode: mode, onesdk: window.onesdk });
 }
 
@@ -88,7 +88,7 @@ function loadAuto() {
     }, AUTO_POLL_INTERVAL_MS);
 }
 
-export function load() {
+export function load(): void {
     const params = new URLSearchParams(window.location.search);
     const requested = params.get('lib');
     const mode = requested === 'local' ? 'local' : 'auto';

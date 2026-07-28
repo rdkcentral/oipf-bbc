@@ -160,10 +160,11 @@ module.exports = function(env, argv) {
     const testAppConfig = {
         name: 'testapp',
         entry: {
-            testapp: './testapp/src/index.js'
+            testapp: './testapp/src/index.ts'
         },
         resolve: {
-            modules: [path.resolve(__dirname, 'testapp'), 'node_modules']
+            modules: [path.resolve(__dirname, 'testapp'), 'node_modules'],
+            extensions: ['.ts', '.js']
         },
         output: {
             filename: '[name].bundle.js',
@@ -173,6 +174,15 @@ module.exports = function(env, argv) {
         },
         module: {
             rules: [
+                {
+                    test: /\.ts$/,
+                    use: {
+                        loader: 'ts-loader',
+                        options: {
+                            configFile: path.resolve(__dirname, 'testapp/tsconfig.json')
+                        }
+                    }
+                },
                 {
                     test: /\.css$/,
                     use: [MiniCssExtractPlugin.loader, 'css-loader']

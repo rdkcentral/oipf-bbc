@@ -22,19 +22,20 @@
  * and DOM accessors fail to instantiate (rendered as a setup error), while the
  * bbc facade resolves but its Firebolt-backed calls reject (rendered per case).
  */
-import { harness } from 'harness/harness.js';
+import { harness } from 'harness/harness';
 
-const METHODS = ['getChannelConfig', 'bindToCurrentChannel', 'setChannel', 'getComponents', 'selectComponent', 'stop'];
+const METHODS: (keyof VideoBroadcast)[] = ['getChannelConfig', 'bindToCurrentChannel', 'setChannel', 'getComponents', 'selectComponent', 'stop'];
 
 // OIPF play states (see the VideoBroadcast spec): 0 UNREALIZED, 1 CONNECTING,
 // 2 PRESENTING, 3 STOPPED. Not exposed as globals to the test app, so mirrored here.
 const VALID_PLAY_STATES = [0, 1, 2, 3];
 
-function isArrayLike(value) {
-    return !!value && typeof value.item === 'function' && typeof value.length === 'number';
+function isArrayLike(value: unknown): boolean {
+    const candidate = value as OipfCollection<unknown> | null | undefined;
+    return !!candidate && typeof candidate.item === 'function' && typeof candidate.length === 'number';
 }
 
-function assertValidChannel(channel) {
+function assertValidChannel(channel: Channel | null | undefined) {
     // null/undefined are legitimate: no channel bound yet (e.g. before the first
     // successful bind/tune), or bindToCurrentChannel() couldn't map the host's
     // current channel into the channel list. Only validate shape when a channel
@@ -50,13 +51,13 @@ function assertValidChannel(channel) {
         throw new Error('channel is missing a string ccid: ' + JSON.stringify(channel));
     }
 }
-function assertValidPlayState(playState) {
+function assertValidPlayState(playState: number) {
     if (VALID_PLAY_STATES.indexOf(playState) === -1) {
         throw new Error('expected playState to be one of ' + VALID_PLAY_STATES.join(', ') + ', got: ' + playState);
     }
 }
 
-harness.register({
+harness.register<VideoBroadcast>({
     path: [harness.INTERFACE, 'Video Broadcast'],
     accessors: {
         bbc: function () {
@@ -65,7 +66,7 @@ harness.register({
         factory: function () {
             return oipfObjectFactory.createVideoBroadcastObject();
         },
-        dom: harness.domObjectAccessor('video/broadcast', 'ta-video-broadcast')
+        dom: harness.domObjectAccessor<VideoBroadcast>('video/broadcast', 'ta-video-broadcast')
     },
     cases: [
         {

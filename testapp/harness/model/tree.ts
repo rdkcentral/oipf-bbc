@@ -20,36 +20,60 @@
  * group). Nodes may carry a `subtitle` (second menu line) and a `caption` (help
  * text shown above this node's children). DOM-free — unit-testable headless.
  */
-export function createTree() {
+import type { InterfacePlaceholder, PathSegment, RegisterSpec, TreeNode } from 'harness/types';
+
+export interface Tree {
+    root: TreeNode;
+    isLeaf: (node: TreeNode) => boolean;
+    // any (not unknown) is deliberate: this is the erasure boundary where each
+    // caller's own concrete RegisterSpec<Ctx> (Configuration, VideoBroadcast,
+    // ...) gets boxed into the tree's generic storage (RunnableGroup, which
+    // uses unknown downstream). Function parameters are contravariant, so
+    // RegisterSpec<Configuration> isn't assignable to a RegisterSpec<unknown>
+    // parameter — any is what actually absorbs arbitrary concrete Ctx here.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    register: (spec: RegisterSpec<any>) => void;
+    buildRunAllMenu: () => void;
+    INTERFACE: InterfacePlaceholder;
+}
+
+interface InterfaceType {
+    key: 'bbc' | 'factory' | 'dom';
+    label: string;
+    description: string;
+}
+
+export function createTree(): Tree {
     // Placeholder token used in a register() path to mean "expand across every
     // interface type". INTERFACE_TYPES is the canonical set and ordering; each
     // `description` explains the access path to a newcomer (shown as the interface
     // node's menu subtitle and as the caption once drilled into it).
-    const INTERFACE = { interfacePlaceholder: true };
-    const INTERFACE_TYPES = [
+    const INTERFACE: InterfacePlaceholder = { interfacePlaceholder: true };
+    const INTERFACE_TYPES: InterfaceType[] = [
         { key: 'bbc', label: 'bbc', description: 'the window.bbc facade API' },
         { key: 'factory', label: 'Factory', description: 'objects from oipfObjectFactory.createXObject()' },
         { key: 'dom', label: 'DOM', description: '<object> elements resolved via getElementById' }
     ];
 
-    const root = {
+    const root: TreeNode = {
         label: 'Home',
         children: [],
         index: {},
         group: null,
+        id: null,
         subtitle: null,
         caption: 'How are OIPF objects accessed? Choose an interface type, or a global category.'
     };
 
     // A node is a leaf (runnable test group) when it carries a group; anything
     // else is a branch to drill into. Keyed on `group`, not child count.
-    function isLeaf(node) {
+    function isLeaf(node: TreeNode): boolean {
         return !!node.group;
     }
 
-    function childNode(parent, label) {
+    function childNode(parent: TreeNode, label: string): TreeNode {
         if (!parent.index[label]) {
-            const node = { label: label, children: [], index: {}, group: null, id: null, subtitle: null, caption: null };
+            const node: TreeNode = { label: label, children: [], index: {}, group: null, id: null, subtitle: null, caption: null };
             parent.index[label] = node;
             parent.children.push(node);
         }
@@ -59,7 +83,7 @@ export function createTree() {
     // Inserts a leaf at an explicit path, creating branch nodes as needed. Warns
     // on a path collision — where a leaf and a branch would share a node — since
     // that leaves one of them unreachable (the leaf wins; see isLeaf).
-    function insertLeaf(pathArr, group) {
+    function insertLeaf(pathArr: PathSegment[], group: TreeNode['group']) {
         const id = pathArr.join(' / ');
         pathArr.forEach(function (segment, i) {
             if (typeof segment !== 'string') {
@@ -69,7 +93,7 @@ export function createTree() {
         });
         let node = root;
         for (let i = 0; i < pathArr.length; i++) {
-            node = childNode(node, pathArr[i]);
+            node = childNode(node, pathArr[i] as string);
             if (i < pathArr.length - 1 && node.group) {
                 console.warn('Menu path collision: "' + id + '" nests under a ' +
                     'registered test group at "' + node.id + '" — the deeper path is unreachable.');
@@ -87,7 +111,8 @@ export function createTree() {
     // Registers a test group at an explicit `path`. A path containing INTERFACE is
     // expanded once per interface type (wiring the matching accessor; a missing one
     // becomes an N/A leaf). A path without it is placed literally (e.g. onesdk).
-    function register(spec) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function register(spec: RegisterSpec<any>): void {
         const path = spec.path || [];
         const ifaceIdx = path.indexOf(INTERFACE);
         if (ifaceIdx === -1) {
@@ -102,7 +127,7 @@ export function createTree() {
                     'interface label "' + path[0] + '" but has no INTERFACE placeholder — it will ' +
                     'merge into that interface branch with no accessor. Use harness.INTERFACE instead.');
             }
-            insertLeaf(path, { cases: spec.cases });
+            insertLeaf(path as string[], { cases: spec.cases });
             return;
         }
         INTERFACE_TYPES.forEach(function (type) {
@@ -130,7 +155,7 @@ export function createTree() {
     // { autorun: categoryNode } — the controller runs that subtree instead of
     // opening it. Call once after all test files have registered (e.g. in init).
     const RUN_ALL_LABEL = '» Run all tests';
-    function buildRunAllMenu() {
+    function buildRunAllMenu(): void {
         if (root.index[RUN_ALL_LABEL]) {
             return;
         }

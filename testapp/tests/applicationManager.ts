@@ -18,9 +18,9 @@
  * ApplicationManager feature, exercised via bbc / factory / DOM. The common
  * member across all three access types is getOwnerApplication().
  */
-import { harness } from 'harness/harness.js';
+import { harness } from 'harness/harness';
 
-harness.register({
+harness.register<ApplicationManager>({
     path: [harness.INTERFACE, 'Application Manager'],
     accessors: {
         bbc: function () {
@@ -29,7 +29,7 @@ harness.register({
         factory: function () {
             return oipfObjectFactory.createApplicationManagerObject();
         },
-        dom: harness.domObjectAccessor('application/oipfApplicationManager', 'ta-app-manager')
+        dom: harness.domObjectAccessor<ApplicationManager>('application/oipfApplicationManager', 'ta-app-manager')
     },
     cases: [
         {
@@ -61,7 +61,7 @@ harness.register({
                 if (!app) {
                     throw new Error('getOwnerApplication() returned a falsy value');
                 }
-                const checks = {
+                const checks: Record<string, string> = {
                     'show': typeof app.show,
                     'privateData.keyset.setValue': typeof (app.privateData && app.privateData.keyset && app.privateData.keyset.setValue),
                     'createApplication': typeof app.createApplication,

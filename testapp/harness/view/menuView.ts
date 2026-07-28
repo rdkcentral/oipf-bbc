@@ -20,21 +20,36 @@
  * drill-down stack; this view owns which item is focused within the shown level.
  * Emits intent via opts.onActivate(childNode); opts.isLeaf decides the chevron.
  */
-import { updateScrollHints } from 'harness/util.js';
+import { updateScrollHints } from 'harness/util';
+import type { TreeNode } from 'harness/types';
 
-export function createMenuView(opts) {
+export interface MenuView {
+    render: (node: TreeNode, focusIdx: number, breadcrumb: string[], isGhosted: boolean) => void;
+    focusDown: () => void;
+    focusUp: () => void;
+    focusedIndex: () => number;
+    setGhosted: (isGhosted: boolean) => void;
+    updateHints: () => void;
+}
+
+export interface MenuViewOpts {
+    onActivate: (child: TreeNode) => void;
+    isLeaf: (node: TreeNode) => boolean;
+}
+
+export function createMenuView(opts: MenuViewOpts): MenuView {
     const onActivate = opts.onActivate;
     const isLeaf = opts.isLeaf;
 
-    const scrollEl = document.getElementById('menuScroll');
+    const scrollEl = document.getElementById('menuScroll')!;
     const breadcrumbEl = document.getElementById('menuBreadcrumb');
     const captionEl = document.getElementById('menuCaption');
 
-    let currentNode = null; // the branch whose children are listed
+    let currentNode: TreeNode | null = null; // the branch whose children are listed
     let focusIndex = 0;
     let ghosted = false; // true while the results pane holds true focus
 
-    function updateHints() {
+    function updateHints(): void {
         updateScrollHints('menuScroll', 'menuScrollUp', 'menuScrollDown');
     }
 
@@ -44,7 +59,7 @@ export function createMenuView(opts) {
         for (let i = 0; i < items.length; i++) {
             items[i].className = i === focusIndex ? focusedClass : 'menuItem';
         }
-        const focused = items[focusIndex];
+        const focused = items[focusIndex] as HTMLElement | undefined;
         if (focused && focused.scrollIntoView) {
             focused.scrollIntoView({ block: 'nearest' });
         }
@@ -53,7 +68,7 @@ export function createMenuView(opts) {
 
     // Renders a level's children. focusIdx seeds the cursor (restored on drill-out);
     // breadcrumb is the path labels; isGhosted dims focus when results are active.
-    function render(node, focusIdx, breadcrumb, isGhosted) {
+    function render(node: TreeNode, focusIdx: number, breadcrumb: string[], isGhosted: boolean): void {
         currentNode = node;
         focusIndex = focusIdx || 0;
         ghosted = !!isGhosted;
@@ -104,17 +119,17 @@ export function createMenuView(opts) {
         repaintFocus();
     }
 
-    function focusDown() {
-        focusIndex = Math.min(focusIndex + 1, currentNode.children.length - 1);
+    function focusDown(): void {
+        focusIndex = Math.min(focusIndex + 1, currentNode!.children.length - 1);
         repaintFocus();
     }
 
-    function focusUp() {
+    function focusUp(): void {
         focusIndex = Math.max(focusIndex - 1, 0);
         repaintFocus();
     }
 
-    function setGhosted(isGhosted) {
+    function setGhosted(isGhosted: boolean): void {
         ghosted = !!isGhosted;
         repaintFocus();
     }

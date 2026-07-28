@@ -19,9 +19,9 @@
  * to an interface type), so they live under their own top-level 'onesdk' category
  * rather than being expanded across bbc/Factory/DOM.
  */
-import { harness } from 'harness/harness.js';
+import { harness } from 'harness/harness';
 
-function assertValidVideoMode(mode, i) {
+function assertValidVideoMode(mode: VideoMode, i: number) {
     if (!mode) {
         return;
     }

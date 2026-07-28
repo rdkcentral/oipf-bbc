@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "node",
+    "target": "es2020",
+    "checkJs": false,
+    "baseUrl": "./lib"
+  },
+  "include": [
+    "lib/**/*.js",
+    "test/**/*.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "testapp"
+  ]
+}

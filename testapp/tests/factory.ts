@@ -19,7 +19,7 @@
  * directly under the Factory branch rather than being expanded per interface
  * because isObjectSupported is a factory method with no bbc or DOM equivalent.
  */
-import { harness } from 'harness/harness.js';
+import { harness } from 'harness/harness';
 
 harness.register({
     path: ['Factory', 'isObjectSupported'],

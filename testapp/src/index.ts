@@ -17,18 +17,18 @@
 /*
  * Entry point. Import order below sets menu order (registration order pins
  * top-level categories): interface features first (bbc / Factory / DOM), then
- * the global onesdk category. loader.js runs last — it resolves the library
+ * the global onesdk category. loader.ts runs last — it resolves the library
  * (local bundled copy or platform-injected) and calls harness.init() once every
  * test module above has registered.
  */
 import 'harness/harness.css';
 
-import 'tests/configuration.js';
-import 'tests/applicationManager.js';
-import 'tests/videoBroadcast.js';
-import 'tests/displayInfo.js';
-import 'tests/factory.js';
+import 'tests/configuration';
+import 'tests/applicationManager';
+import 'tests/videoBroadcast';
+import 'tests/displayInfo';
+import 'tests/factory';
 
-import { load } from 'harness/loader.js';
+import { load } from 'harness/loader';
 
 load();

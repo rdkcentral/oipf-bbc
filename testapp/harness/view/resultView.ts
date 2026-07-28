@@ -21,13 +21,46 @@
  * controller owns app state (active pane, reload-pending); this view reports row
  * interactions back through the methods it exposes.
  */
-import { pretty as prettyValue, updateScrollHints } from 'harness/util.js';
+import { pretty as prettyValue, updateScrollHints } from 'harness/util';
 
-export function createResultView() {
+// Focusable row elements carry marker properties set at runtime rather than a
+// typed class hierarchy — __armed (a manual case's fire callback), __inert (an
+// unfocusable/inert row), __reload (the setup-failure reload button).
+interface FocusableElement extends HTMLElement {
+    __armed?: (() => void) | null;
+    __inert?: boolean;
+    __reload?: () => void;
+}
+
+export interface CaseRowController {
+    row: HTMLElement;
+    markRunning: () => void;
+    settle: (ok: boolean, value?: unknown) => void;
+    arm: (onFire: () => void) => void;
+}
+
+export interface ResultView {
+    reset: (title: string) => void;
+    addCase: (name: string) => CaseRowController;
+    showUnavailable: (message: string) => void;
+    showReloadPrompt: (error: unknown, onReload: () => void) => void;
+    showFatal: (message: string) => void;
+    refresh: () => void;
+    setActive: (isActive: boolean) => void;
+    focusDown: () => void;
+    focusUp: () => void;
+    activateFocused: () => void;
+    isInData: () => boolean;
+    scrollData: (direction: number) => void;
+    exitData: () => void;
+    updateHints: () => void;
+}
+
+export function createResultView(): ResultView {
     const DATA_SCROLL_STEP_PX = 60;
 
-    const listEl = document.getElementById('resultsList');
-    const titleEl = document.getElementById('resultsTitle');
+    const listEl = document.getElementById('resultsList')!;
+    const titleEl = document.getElementById('resultsTitle')!;
     const scrollEl = document.getElementById('resultsScroll');
 
     let resultIndex = 0;
@@ -36,40 +69,40 @@ export function createResultView() {
 
     const pretty = prettyValue;
 
-    function updateHints() {
+    function updateHints(): void {
         updateScrollHints('resultsScroll', 'scrollUp', 'scrollDown');
     }
 
     // Focusable items in DOM order: case rows plus the reload button (the note is
     // not focusable). Row navigation moves over this set, so the reload button
     // must be deliberately focused before it can be activated.
-    function focusables() {
+    function focusables(): NodeListOf<FocusableElement> {
         return listEl.querySelectorAll('.caseRow, .reloadButton');
     }
 
-    function focusedEl() {
+    function focusedEl(): FocusableElement | null {
         return focusables()[resultIndex] || null;
     }
 
-    function focusedData() {
+    function focusedData(): HTMLElement | null {
         const el = focusedEl();
         return el && el.classList.contains('caseRow') ? el.querySelector('.caseData') : null;
     }
 
-    function dataIsScrollable(data) {
-        return data && data.style.display !== 'none' && data.scrollHeight > data.clientHeight;
+    function dataIsScrollable(data: HTMLElement | null): boolean {
+        return !!data && data.style.display !== 'none' && data.scrollHeight > data.clientHeight;
     }
 
-    function isArmed(row) {
+    function isArmed(row: FocusableElement | null): boolean {
         return !!(row && row.__armed);
     }
 
     // Activates a manual (armed) case exactly once: clears the flag first so it
     // can't double-fire from both a click and OK, then runs it.
-    function fireArmed(row) {
+    function fireArmed(row: FocusableElement | null) {
         if (isArmed(row)) {
-            const fire = row.__armed;
-            row.__armed = null;
+            const fire = row!.__armed!;
+            row!.__armed = null;
             fire();
         }
     }
@@ -77,7 +110,7 @@ export function createResultView() {
     // Highlights the focused row (so Up/Down scroll the page row-by-row) and, while
     // inside a result, marks its data block as the active scroll target. Snaps to
     // the true extremes for first/last so the viewport can fully reach top/bottom.
-    function syncFocus() {
+    function syncFocus(): void {
         const els = focusables();
         for (let i = 0; i < els.length; i++) {
             const on = active && i === resultIndex;
@@ -87,7 +120,7 @@ export function createResultView() {
             }
         }
         titleEl.className = active ? 'focused' : '';
-        const current = els[resultIndex];
+        const current = els[resultIndex] as HTMLElement | undefined;
         if (active && current && scrollEl) {
             if (resultIndex === 0) {
                 scrollEl.scrollTop = 0;
@@ -100,8 +133,8 @@ export function createResultView() {
         updateHints();
     }
 
-    function appendCase(name) {
-        const row = document.createElement('div');
+    function appendCase(name: string): CaseRowController {
+        const row = document.createElement('div') as FocusableElement;
         row.className = 'caseRow';
 
         const head = document.createElement('div');
@@ -126,12 +159,12 @@ export function createResultView() {
 
         listEl.appendChild(row);
 
-        function setBadge(cls, text) {
+        function setBadge(cls: string, text: string) {
             badge.className = 'badge ' + cls;
             badge.textContent = text;
         }
 
-        function showData(text) {
+        function showData(text: string) {
             if (text !== undefined && text !== 'undefined' && text !== '') {
                 data.textContent = text;
                 data.style.display = 'block';
@@ -161,30 +194,30 @@ export function createResultView() {
 
     // ---- public ----------------------------------------------------------
 
-    function reset(title) {
+    function reset(title: string): void {
         titleEl.textContent = title;
         listEl.innerHTML = '';
         resultIndex = 0;
         inResult = false;
     }
 
-    function addCase(name) {
+    function addCase(name: string): CaseRowController {
         return appendCase(name);
     }
 
     // A single inert "not available" row (can't be entered/scrolled).
-    function showUnavailable(message) {
+    function showUnavailable(message: string): void {
         const view = appendCase('not supported');
-        view.row.__inert = true;
+        (view.row as FocusableElement).__inert = true;
         view.settle(false, message);
     }
 
     // The setup-failure error row plus a reload prompt. The error row is inert;
     // the reload button is a focusable item (see focusables()) so reload only
     // fires when the button itself is focused and activated — never from the row.
-    function showReloadPrompt(error, onReload) {
+    function showReloadPrompt(error: unknown, onReload: () => void): void {
         const errorView = appendCase('setup');
-        errorView.row.__inert = true;
+        (errorView.row as FocusableElement).__inert = true;
         errorView.settle(false, error || 'Object not available for this access type.');
 
         const note = document.createElement('div');
@@ -193,7 +226,7 @@ export function createResultView() {
             'This object may be limited to one instance per page load. Navigate down to ' +
             'the button and press OK to reload and test a different access type.';
 
-        const button = document.createElement('div');
+        const button = document.createElement('div') as FocusableElement;
         button.className = 'reloadButton';
         button.textContent = '↻ Reload page';
         button.__reload = onReload; // marks this as the focusable reload action
@@ -204,28 +237,28 @@ export function createResultView() {
     }
 
     // Pre-init fatal row (library never resolved); list is still empty.
-    function showFatal(message) {
+    function showFatal(message: string): void {
         appendCase(message).settle(false);
     }
 
-    function setActive(isActive) {
+    function setActive(isActive: boolean): void {
         active = !!isActive;
         syncFocus();
     }
 
-    function focusDown() {
+    function focusDown(): void {
         resultIndex = Math.min(resultIndex + 1, focusables().length - 1);
         syncFocus();
     }
 
-    function focusUp() {
+    function focusUp(): void {
         resultIndex = Math.max(resultIndex - 1, 0);
         syncFocus();
     }
 
     // OK/Right on the focused item: reload (button), fire an armed case, ignore an
     // inert row, or otherwise enter data-scroll mode if the row's data overflows.
-    function activateFocused() {
+    function activateFocused(): void {
         const el = focusedEl();
         if (!el) {
             return;
@@ -242,18 +275,18 @@ export function createResultView() {
         }
     }
 
-    function isInData() {
+    function isInData(): boolean {
         return inResult;
     }
 
-    function scrollData(direction) {
+    function scrollData(direction: number): void {
         const data = focusedData();
         if (data) {
             data.scrollTop += direction * DATA_SCROLL_STEP_PX;
         }
     }
 
-    function exitData() {
+    function exitData(): void {
         inResult = false;
         syncFocus();
     }

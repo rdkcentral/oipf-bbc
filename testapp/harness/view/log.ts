@@ -18,12 +18,19 @@
  * LogView (View) — mirrors console output to the on-screen log pane, since the
  * target STB browser has no devtools. Owns the #logList DOM; no app logic.
  */
-import { pretty } from 'harness/util.js';
+import { pretty } from 'harness/util';
 
-export function createLogView() {
+export interface LogView {
+    append: (text: string, isError?: boolean) => void;
+    captureConsole: () => void;
+}
+
+type ConsoleLevel = 'log' | 'info' | 'warn' | 'error';
+
+export function createLogView(): LogView {
     const list = document.getElementById('logList');
 
-    function append(text, isError) {
+    function append(text: string, isError?: boolean): void {
         if (!list) {
             return;
         }
@@ -34,7 +41,7 @@ export function createLogView() {
         list.scrollTop = list.scrollHeight;
     }
 
-    function stringifyArgs(args) {
+    function stringifyArgs(args: ArrayLike<unknown>): string {
         // Use the shared formatter so Errors render as name/message rather than the
         // bare "{}" that JSON.stringify produces for them.
         return Array.prototype.map
@@ -45,12 +52,12 @@ export function createLogView() {
     }
 
     // Wraps console.* and global error events to also append to the log pane.
-    function captureConsole() {
-        ['log', 'info', 'warn', 'error'].forEach(function (level) {
+    function captureConsole(): void {
+        (['log', 'info', 'warn', 'error'] as ConsoleLevel[]).forEach(function (level) {
             const original = console[level] ? console[level].bind(console) : function () {};
             console[level] = function () {
                 append(stringifyArgs(arguments), level === 'error' || level === 'warn');
-                original.apply(null, arguments);
+                original.apply(null, arguments as unknown as unknown[]);
             };
         });
         window.addEventListener('error', function (e) {

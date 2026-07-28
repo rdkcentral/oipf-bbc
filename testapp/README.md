@@ -37,7 +37,7 @@ npm run build:testapp
 npm run build:testapp:dev
 ```
 
-Each runs a production `webpack` build, bundling `testapp/src/index.js`, its ES module dependency graph under `harness/`/`tests/`, and any npm packages they import — producing a minified JS bundle, a CSS file, and `index.html` under `testapp/dist/`. The `:dev` variant additionally copies the built `oipf-bbc` library (`dist/stb/`, so run `npm run build` first) into `testapp/dist/stb/` for a self-contained artifact; the standalone variant relies on the platform to inject the library instead.
+Each runs a production `webpack` build (via `ts-loader`, so a type error fails the build the same way a syntax error would), bundling `testapp/src/index.ts`, its TypeScript dependency graph under `harness/`/`tests/`, and any npm packages they import — producing a minified JS bundle, a CSS file, and `index.html` under `testapp/dist/`. The `:dev` variant additionally copies the built `oipf-bbc` library (`dist/stb/`, so run `npm run build` first) into `testapp/dist/stb/` for a self-contained artifact; the standalone variant relies on the platform to inject the library instead.
 
 ### Validate syntax (no browser required)
 
