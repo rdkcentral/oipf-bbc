@@ -19,6 +19,7 @@
  * across all three access types is the `configuration` property.
  */
 import { harness } from 'harness/harness';
+import { ConfigurationSchema, parseOrThrow } from 'harness/schemas';
 
 harness.register<Configuration>({
     path: [harness.INTERFACE, 'Configuration'],
@@ -38,9 +39,7 @@ harness.register<Configuration>({
                 if (!cfg) {
                     throw new Error('object not available (accessor returned null)');
                 }
-                if (!('configuration' in cfg)) {
-                    throw new Error('missing property: configuration');
-                }
+                parseOrThrow(ConfigurationSchema, cfg, 'Configuration');
                 return 'configuration property present';
             }
         },

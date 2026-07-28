@@ -19,6 +19,7 @@
  * member across all three access types is getOwnerApplication().
  */
 import { harness } from 'harness/harness';
+import { ApplicationManagerSchema, OwnerApplicationSchema, parseOrThrow } from 'harness/schemas';
 
 harness.register<ApplicationManager>({
     path: [harness.INTERFACE, 'Application Manager'],
@@ -38,9 +39,7 @@ harness.register<ApplicationManager>({
                 if (!am) {
                     throw new Error('object not available (accessor returned null)');
                 }
-                if (typeof am.getOwnerApplication !== 'function') {
-                    throw new Error('missing method: getOwnerApplication');
-                }
+                parseOrThrow(ApplicationManagerSchema, am, 'ApplicationManager');
                 return 'getOwnerApplication present';
             }
         },
@@ -61,19 +60,13 @@ harness.register<ApplicationManager>({
                 if (!app) {
                     throw new Error('getOwnerApplication() returned a falsy value');
                 }
-                const checks: Record<string, string> = {
+                parseOrThrow(OwnerApplicationSchema, app, 'OwnerApplication');
+                return {
                     'show': typeof app.show,
-                    'privateData.keyset.setValue': typeof (app.privateData && app.privateData.keyset && app.privateData.keyset.setValue),
+                    'privateData.keyset.setValue': typeof app.privateData.keyset.setValue,
                     'createApplication': typeof app.createApplication,
                     'destroyApplication': typeof app.destroyApplication
                 };
-                const bad = Object.keys(checks).filter(function (k) {
-                    return checks[k] !== 'function';
-                });
-                if (bad.length) {
-                    throw new Error('not functions: ' + bad.join(', '));
-                }
-                return checks;
             }
         },
         {

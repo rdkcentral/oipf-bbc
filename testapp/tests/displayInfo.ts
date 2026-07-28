@@ -20,19 +20,7 @@
  * rather than being expanded across bbc/Factory/DOM.
  */
 import { harness } from 'harness/harness';
-
-function assertValidVideoMode(mode: VideoMode, i: number) {
-    if (!mode) {
-        return;
-    }
-
-    if (typeof mode.width !== 'number' || typeof mode.height !== 'number' || typeof mode.framerate !== 'number') {
-        throw new Error('videoModes[' + i + '] missing numeric width/height/framerate: ' + JSON.stringify(mode));
-    }
-    if (!Array.isArray(mode.colorimetry)) {
-        throw new Error('videoModes[' + i + '].colorimetry is not an array: ' + JSON.stringify(mode));
-    }
-}
+import { DisplayInfoSchema, PrimaryDisplaySchema, VersionSchema, parseOrThrow } from 'harness/schemas';
 
 harness.register({
     path: ['onesdk', 'Display Info'],
@@ -40,9 +28,7 @@ harness.register({
         {
             name: 'onesdk.VERSION',
             run: function () {
-                if (typeof onesdk.VERSION !== 'string' || !onesdk.VERSION) {
-                    throw new Error('expected onesdk.VERSION to be a non-empty string, got: ' + onesdk.VERSION);
-                }
+                parseOrThrow(VersionSchema, onesdk.VERSION, 'onesdk.VERSION');
                 return { VERSION: onesdk.VERSION };
             }
         },
@@ -51,12 +37,7 @@ harness.register({
             run: function () {
                 // Resolves with { edid } from Firebolt; rejects with an OipfError off-STB.
                 return Promise.resolve(onesdk.getDisplayInfo()).then(function (displayInfo) {
-                    if (!displayInfo || typeof displayInfo !== 'object') {
-                        throw new Error('getDisplayInfo() resolved with a non-object: ' + JSON.stringify(displayInfo));
-                    }
-                    if (typeof displayInfo.edid !== 'string') {
-                        throw new Error('getDisplayInfo().edid is not a string: ' + JSON.stringify(displayInfo));
-                    }
+                    parseOrThrow(DisplayInfoSchema, displayInfo, 'getDisplayInfo()');
                     return { edid: displayInfo.edid };
                 });
             }
@@ -65,16 +46,7 @@ harness.register({
             name: 'getPrimaryDisplay()',
             run: function () {
                 const display = getPrimaryDisplay();
-                if (!display || typeof display !== 'object') {
-                    throw new Error('getPrimaryDisplay() returned a non-object: ' + JSON.stringify(display));
-                }
-                if (typeof display.physicalWidth !== 'number' || typeof display.physicalHeight !== 'number') {
-                    throw new Error('getPrimaryDisplay() physicalWidth/physicalHeight are not numbers: ' + JSON.stringify(display));
-                }
-                if (!Array.isArray(display.videoModes)) {
-                    throw new Error('getPrimaryDisplay().videoModes is not an array: ' + JSON.stringify(display));
-                }
-                display.videoModes.forEach(assertValidVideoMode);
+                parseOrThrow(PrimaryDisplaySchema, display, 'getPrimaryDisplay()');
                 return display;
             }
         }

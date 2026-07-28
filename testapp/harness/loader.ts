@@ -34,6 +34,7 @@
  * module has registered.
  */
 import { harness } from 'harness/harness';
+import { BbcSchema, OipfObjectFactorySchema, parseOrThrow } from 'harness/schemas';
 
 // Relative to the test app's own served root. The library is built separately
 // (dist/stb/, outside testapp/ in source form) — webpack.config.js's testapp
@@ -50,7 +51,26 @@ function librariesPresent(): boolean {
     return typeof window.oipfObjectFactory !== 'undefined';
 }
 
+// Validates the two facades the library actually exposes as globals before
+// any test runs
+function checkInjectedLibraryShape(): string | undefined {
+    try {
+        parseOrThrow(OipfObjectFactorySchema, oipfObjectFactory, 'oipfObjectFactory');
+        if (typeof bbc !== 'undefined') {
+            parseOrThrow(BbcSchema, bbc, 'bbc');
+        }
+    } catch (err) {
+        return err instanceof Error ? err.message : String(err);
+    }
+    return undefined;
+}
+
 function start(mode: string) {
+    const shapeError = checkInjectedLibraryShape();
+    if (shapeError) {
+        harness.fatal('Injected library failed its startup shape check — ' + shapeError);
+        return;
+    }
     harness.init({ mode: mode, onesdk: window.onesdk });
 }
 
