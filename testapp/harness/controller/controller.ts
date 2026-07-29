@@ -277,7 +277,7 @@ export function createController(deps: ControllerDeps): Controller {
     }
 
     function fatal(message: string): void {
-        // Only reached from loader.js before init() runs (the library never
+        // Only reached from loader.ts before init() runs (the library never
         // resolved), so the results list is still empty.
         setStatus(message);
         resultView.showFatal(message);
