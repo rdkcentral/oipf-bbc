@@ -76,6 +76,7 @@ harness.register<ApplicationManager>({
                 if (!app) {
                     throw new Error('getOwnerApplication() returned a falsy value');
                 }
+                parseOrThrow(OwnerApplicationSchema, app, 'OwnerApplication');
                 return { calculatedMask: app.privateData.keyset.setValue(0xffffffff) };
             }
         },
@@ -88,6 +89,7 @@ harness.register<ApplicationManager>({
                 if (!app) {
                     throw new Error('getOwnerApplication() returned a falsy value');
                 }
+                parseOrThrow(OwnerApplicationSchema, app, 'OwnerApplication');
                 app.createApplication('https://www.live.bbctvapps.co.uk/tap/iplayer');
                 return 'createApplication called — launching uk.co.bbc.iplayer';
             }
@@ -101,6 +103,7 @@ harness.register<ApplicationManager>({
                 if (!app) {
                     throw new Error('getOwnerApplication() returned a falsy value');
                 }
+                parseOrThrow(OwnerApplicationSchema, app, 'OwnerApplication');
                 app.destroyApplication();
                 return 'destroyApplication called — closing app';
             }

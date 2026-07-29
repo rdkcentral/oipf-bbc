@@ -12,7 +12,7 @@
     },
     "overrides": [
         {
-            "files": ["*.ts"],
+            "files": ["**/*.ts"],
             "parser": "@typescript-eslint/parser",
             "plugins": ["@typescript-eslint"],
             "rules": {
