@@ -19,17 +19,28 @@
  * flat chronological list of case results, scrollable by the remote. The
  * controller owns when it opens/closes; this view owns its DOM and scrolling.
  */
-import { pretty, updateScrollHints } from 'harness/util.js';
+import { pretty, updateScrollHints } from 'harness/util';
+import type { AutoRunSummary, ResultEntry } from 'harness/types';
 
-export function createPopupView() {
+export interface PopupView {
+    open: (scopeLabel: string, runTotal: number) => void;
+    addEntry: (entry: ResultEntry) => void;
+    markComplete: (summary: AutoRunSummary) => void;
+    scroll: (direction: number) => void;
+    close: () => void;
+    isComplete: () => boolean;
+    updateHints: () => void;
+}
+
+export function createPopupView(): PopupView {
     const SCROLL_STEP_PX = 80;
 
-    const overlay = document.getElementById('popup');
-    const titleEl = document.getElementById('popupTitle');
-    const summaryEl = document.getElementById('popupSummary');
-    const scrollEl = document.getElementById('popupScroll');
-    const listEl = document.getElementById('popupList');
-    const footerEl = document.getElementById('popupFooter');
+    const overlay = document.getElementById('popup')!;
+    const titleEl = document.getElementById('popupTitle')!;
+    const summaryEl = document.getElementById('popupSummary')!;
+    const scrollEl = document.getElementById('popupScroll')!;
+    const listEl = document.getElementById('popupList')!;
+    const footerEl = document.getElementById('popupFooter')!;
 
     let total = 0;
     let done = 0;
@@ -37,7 +48,7 @@ export function createPopupView() {
     let failed = 0;
     let complete = false;
 
-    function updateHints() {
+    function updateHints(): void {
         updateScrollHints('popupScroll', 'popupScrollUp', 'popupScrollDown');
     }
 
@@ -45,7 +56,7 @@ export function createPopupView() {
         summaryEl.textContent = done + '/' + total + ' · ' + passed + ' passed · ' + failed + ' failed';
     }
 
-    function open(scopeLabel, runTotal) {
+    function open(scopeLabel: string, runTotal: number): void {
         total = runTotal;
         done = 0;
         passed = 0;
@@ -62,7 +73,7 @@ export function createPopupView() {
         updateHints();
     }
 
-    function addEntry(entry) {
+    function addEntry(entry: ResultEntry): void {
         done++;
         if (entry.ok) {
             passed++;
@@ -108,7 +119,7 @@ export function createPopupView() {
         updateHints();
     }
 
-    function markComplete(summary) {
+    function markComplete(summary: AutoRunSummary): void {
         complete = true;
         const bits = [summary.passed + ' passed', summary.failed + ' failed'];
         if (summary.manualSkipped) {
@@ -122,12 +133,12 @@ export function createPopupView() {
         updateHints();
     }
 
-    function scroll(direction) {
+    function scroll(direction: number): void {
         scrollEl.scrollTop += direction * SCROLL_STEP_PX;
         updateHints();
     }
 
-    function close() {
+    function close(): void {
         overlay.classList.remove('open');
         overlay.setAttribute('aria-hidden', 'true'); // hidden — remove from accessibility tree
     }

@@ -18,9 +18,10 @@
  * Configuration feature, exercised via bbc / factory / DOM. The common member
  * across all three access types is the `configuration` property.
  */
-import { harness } from 'harness/harness.js';
+import { harness } from 'harness/harness';
+import { ConfigurationSchema, parseOrThrow } from 'harness/schemas';
 
-harness.register({
+harness.register<Configuration>({
     path: [harness.INTERFACE, 'Configuration'],
     accessors: {
         bbc: function () {
@@ -29,7 +30,7 @@ harness.register({
         factory: function () {
             return oipfObjectFactory.createConfigurationObject();
         },
-        dom: harness.domObjectAccessor('application/oipfConfiguration', 'ta-configuration')
+        dom: harness.domObjectAccessor<Configuration>('application/oipfConfiguration', 'ta-configuration')
     },
     cases: [
         {
@@ -38,9 +39,7 @@ harness.register({
                 if (!cfg) {
                     throw new Error('object not available (accessor returned null)');
                 }
-                if (!('configuration' in cfg)) {
-                    throw new Error('missing property: configuration');
-                }
+                parseOrThrow(ConfigurationSchema, cfg, 'Configuration');
                 return 'configuration property present';
             }
         },

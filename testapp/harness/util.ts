@@ -21,7 +21,7 @@
 // Formats a test result value for display. Pure (no DOM) — shared by the result
 // and popup views. Errors show name/message (+ optional detail); other values are
 // pretty-printed JSON, falling back to String() for anything non-serialisable.
-export function pretty(value) {
+export function pretty(value: unknown): string {
     if (value instanceof Error) {
         return value.name + ': ' + value.message + (value.detail ? '\n' + value.detail : '');
     }
@@ -37,7 +37,7 @@ export function pretty(value) {
 
 // Fades in the up/down indicators when a scroll container has off-screen content
 // in that direction. Shared by the menu and results views.
-export function updateScrollHints(scrollerId, upId, downId) {
+export function updateScrollHints(scrollerId: string, upId: string, downId: string): void {
     const scroller = document.getElementById(scrollerId);
     if (!scroller) {
         return;

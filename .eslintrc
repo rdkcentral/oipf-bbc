@@ -9,5 +9,15 @@
         "dot-notation": "error",
         "new-cap": ["error", { "capIsNew": false }],
         "no-caller": "error"
-    }
+    },
+    "overrides": [
+        {
+            "files": ["**/*.ts"],
+            "parser": "@typescript-eslint/parser",
+            "plugins": ["@typescript-eslint"],
+            "rules": {
+                "no-undef": "off"
+            }
+        }
+    ]
 }

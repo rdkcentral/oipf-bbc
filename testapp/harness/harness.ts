@@ -19,21 +19,22 @@
  * result, log; controller) and exports the public harness facade.
  *
  * Test files import this module and self-register via harness.register({ path,
- * accessors, cases }); the entry point (src/index.js) imports every test module
- * (for its registration side effect) and then loader.js last, which calls
+ * accessors, cases }); the entry point (src/index.ts) imports every test module
+ * (for its registration side effect) and then loader.ts last, which calls
  * harness.init() once the library is resolved (local stb/ copy or platform).
  *
  * Everything renders to the screen: a drill-down menu, a results pane, and a log
  * pane that mirrors console.log/error (the target STB browser has no devtools).
  */
-import { createTree } from './model/tree.js';
-import { createRunner } from './model/runner.js';
-import { createAutoRunner } from './model/autorun.js';
-import { createLogView } from './view/log.js';
-import { createMenuView } from './view/menuView.js';
-import { createResultView } from './view/resultView.js';
-import { createPopupView } from './view/popupView.js';
-import { createController } from './controller/controller.js';
+import { createTree } from 'harness/model/tree';
+import { createRunner } from 'harness/model/runner';
+import { createAutoRunner } from 'harness/model/autorun';
+import { createLogView } from 'harness/view/log';
+import { createMenuView } from 'harness/view/menuView';
+import { createResultView } from 'harness/view/resultView';
+import { createPopupView } from 'harness/view/popupView';
+import { createController, type Controller } from 'harness/controller/controller';
+import type { Accessor, Harness } from 'harness/types';
 
 const tree = createTree();
 const runner = createRunner();
@@ -42,7 +43,7 @@ const logView = createLogView();
 const resultView = createResultView();
 const popupView = createPopupView();
 
-let controller;
+let controller: Controller;
 const menuView = createMenuView({
     isLeaf: tree.isLeaf,
     onActivate: function (child) {
@@ -61,8 +62,11 @@ controller = createController({
 
 // Test-authoring helper: returns an accessor (a setup function) that creates a
 // DOM <object> of the given type and resolves it through the factory's
-// getElementById override. Recreates on each call to avoid DOM build-up.
-function domObjectAccessor(type, id) {
+// getElementById override. Recreates on each call to avoid DOM build-up. The
+// generic lets each call site say what OIPF interface the element is expected
+// to expose once the platform/plugin augments it (TypeScript's DOM types have
+// no idea an <object type="..."> grows OIPF methods at runtime).
+function domObjectAccessor<Ctx>(type: string, id: string): Accessor<Ctx> {
     return function () {
         const existing = document.getElementById(id);
         if (existing && existing.parentNode) {
@@ -73,11 +77,11 @@ function domObjectAccessor(type, id) {
         obj.id = id;
         document.body.appendChild(obj);
         // May return null off-STB: the override swallows instantiation errors.
-        return document.getElementById(id);
+        return document.getElementById(id) as Ctx | null;
     };
 }
 
-export const harness = {
+export const harness: Harness = {
     register: tree.register,
     INTERFACE: tree.INTERFACE,
     domObjectAccessor: domObjectAccessor,

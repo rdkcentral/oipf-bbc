@@ -18,9 +18,10 @@
  * ApplicationManager feature, exercised via bbc / factory / DOM. The common
  * member across all three access types is getOwnerApplication().
  */
-import { harness } from 'harness/harness.js';
+import { harness } from 'harness/harness';
+import { ApplicationManagerSchema, OwnerApplicationSchema, parseOrThrow } from 'harness/schemas';
 
-harness.register({
+harness.register<ApplicationManager>({
     path: [harness.INTERFACE, 'Application Manager'],
     accessors: {
         bbc: function () {
@@ -29,7 +30,7 @@ harness.register({
         factory: function () {
             return oipfObjectFactory.createApplicationManagerObject();
         },
-        dom: harness.domObjectAccessor('application/oipfApplicationManager', 'ta-app-manager')
+        dom: harness.domObjectAccessor<ApplicationManager>('application/oipfApplicationManager', 'ta-app-manager')
     },
     cases: [
         {
@@ -38,16 +39,14 @@ harness.register({
                 if (!am) {
                     throw new Error('object not available (accessor returned null)');
                 }
-                if (typeof am.getOwnerApplication !== 'function') {
-                    throw new Error('missing method: getOwnerApplication');
-                }
+                parseOrThrow(ApplicationManagerSchema, am, 'ApplicationManager');
                 return 'getOwnerApplication present';
             }
         },
         {
             name: 'getOwnerApplication()',
             run: function (am) {
-                const app = am.getOwnerApplication();
+                const app = am.getOwnerApplication(document);
                 if (!app) {
                     throw new Error('getOwnerApplication() returned a falsy value');
                 }
@@ -57,29 +56,27 @@ harness.register({
         {
             name: 'owner application properties',
             run: function (am) {
-                const app = am.getOwnerApplication();
+                const app = am.getOwnerApplication(document);
                 if (!app) {
                     throw new Error('getOwnerApplication() returned a falsy value');
                 }
-                const checks = {
+                parseOrThrow(OwnerApplicationSchema, app, 'OwnerApplication');
+                return {
                     'show': typeof app.show,
-                    'privateData.keyset.setValue': typeof (app.privateData && app.privateData.keyset && app.privateData.keyset.setValue),
+                    'privateData.keyset.setValue': typeof app.privateData.keyset.setValue,
                     'createApplication': typeof app.createApplication,
                     'destroyApplication': typeof app.destroyApplication
                 };
-                const bad = Object.keys(checks).filter(function (k) {
-                    return checks[k] !== 'function';
-                });
-                if (bad.length) {
-                    throw new Error('not functions: ' + bad.join(', '));
-                }
-                return checks;
             }
         },
         {
             name: 'privateData.keyset.setValue(ALL)',
             run: function (am) {
-                const app = am.getOwnerApplication();
+                const app = am.getOwnerApplication(document);
+                if (!app) {
+                    throw new Error('getOwnerApplication() returned a falsy value');
+                }
+                parseOrThrow(OwnerApplicationSchema, app, 'OwnerApplication');
                 return { calculatedMask: app.privateData.keyset.setValue(0xffffffff) };
             }
         },
@@ -88,7 +85,12 @@ harness.register({
             name: 'createApplication(iPlayer) — launches another app',
             manual: true,
             run: function (am) {
-                am.getOwnerApplication().createApplication('https://www.live.bbctvapps.co.uk/tap/iplayer');
+                const app = am.getOwnerApplication(document);
+                if (!app) {
+                    throw new Error('getOwnerApplication() returned a falsy value');
+                }
+                parseOrThrow(OwnerApplicationSchema, app, 'OwnerApplication');
+                app.createApplication('https://www.live.bbctvapps.co.uk/tap/iplayer');
                 return 'createApplication called — launching uk.co.bbc.iplayer';
             }
         },
@@ -97,7 +99,12 @@ harness.register({
             name: 'destroyApplication() — closes this app',
             manual: true,
             run: function (am) {
-                am.getOwnerApplication().destroyApplication();
+                const app = am.getOwnerApplication(document);
+                if (!app) {
+                    throw new Error('getOwnerApplication() returned a falsy value');
+                }
+                parseOrThrow(OwnerApplicationSchema, app, 'OwnerApplication');
+                app.destroyApplication();
                 return 'destroyApplication called — closing app';
             }
         }

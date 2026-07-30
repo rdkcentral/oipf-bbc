@@ -20,23 +20,37 @@
  * library objects are single-instance per page load with no teardown — re-opening
  * a group must reuse the object rather than rebuild it (which would throw).
  */
-export function createRunner() {
-    const setupCache = {};
+import type { ExecuteResult, PrepareResult, TestCase, TreeNode } from 'harness/types';
+
+export interface Runner {
+    prepare: (node: TreeNode) => PrepareResult;
+    execute: (testCase: TestCase<unknown>, ctx: unknown) => Promise<ExecuteResult>;
+}
+
+export function createRunner(): Runner {
+    const setupCache: Record<string, unknown> = {};
 
     // Decides what a leaf should show, resolving (and caching) its setup context:
     //   { kind: 'unavailable', message }   — interface type with no accessor
     //   { kind: 'setupFailure', error }    — setup threw or yielded nothing
     //   { kind: 'cases', cases, ctx }      — ready to run
-    function prepare(node) {
-        const group = node.group;
-        if (group.naMessage) {
+    function prepare(node: TreeNode): PrepareResult {
+        const group = node.group!;
+        if ('naMessage' in group) {
             return { kind: 'unavailable', message: group.naMessage };
         }
-        if (typeof group.setup !== 'function') {
-            return { kind: 'cases', cases: group.cases || [], ctx: undefined };
+        if ('autorun' in group) {
+            // controller.ts's activate() intercepts autorun leaves before ever
+            // calling runner.prepare() — reaching here is a real bug, not a shape
+            // this function is meant to handle.
+            throw new Error('runner.prepare() received an autorun leaf; the controller should have handled it directly.');
         }
-        if (Object.prototype.hasOwnProperty.call(setupCache, node.id)) {
-            return { kind: 'cases', cases: group.cases || [], ctx: setupCache[node.id] };
+        if (!group.setup) {
+            return { kind: 'cases', cases: group.cases, ctx: undefined };
+        }
+        const id = node.id as string;
+        if (Object.prototype.hasOwnProperty.call(setupCache, id)) {
+            return { kind: 'cases', cases: group.cases, ctx: setupCache[id] };
         }
         let ctx;
         try {
@@ -47,12 +61,12 @@ export function createRunner() {
         if (!ctx) {
             return { kind: 'setupFailure', error: null };
         }
-        setupCache[node.id] = ctx;
-        return { kind: 'cases', cases: group.cases || [], ctx: ctx };
+        setupCache[id] = ctx;
+        return { kind: 'cases', cases: group.cases, ctx: ctx };
     }
 
     // Runs one case; always resolves (never rejects) with { ok, value }.
-    function execute(testCase, ctx) {
+    function execute(testCase: TestCase<unknown>, ctx: unknown): Promise<ExecuteResult> {
         return new Promise(function (resolve) {
             try {
                 Promise.resolve(testCase.run(ctx)).then(

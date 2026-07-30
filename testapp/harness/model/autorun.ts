@@ -20,16 +20,25 @@
  * headless-testable. Scoping to one subtree keeps single-instance objects
  * (VideoBroadcast / ApplicationManager) from conflicting across interfaces.
  */
-export function createAutoRunner(deps) {
+import type { AutoRunSummary, ResultEntry, RunnableGroup, RunPlan, TestCase, TreeNode } from 'harness/types';
+import type { Runner } from 'harness/model/runner';
+import type { Tree } from 'harness/model/tree';
+
+export interface AutoRunner {
+    collect: (scope: TreeNode) => RunPlan;
+    run: (plan: RunPlan, onResult: (entry: ResultEntry) => void) => Promise<AutoRunSummary>;
+}
+
+export function createAutoRunner(deps: { tree: Tree; runner: Runner }): AutoRunner {
     const tree = deps.tree;
     const runner = deps.runner;
 
     // Depth-first list of every leaf under a node (the node itself if it's a leaf).
-    function leavesUnder(node) {
+    function leavesUnder(node: TreeNode): TreeNode[] {
         if (tree.isLeaf(node)) {
             return [node];
         }
-        let out = [];
+        let out: TreeNode[] = [];
         node.children.forEach(function (child) {
             out = out.concat(leavesUnder(child));
         });
@@ -39,14 +48,14 @@ export function createAutoRunner(deps) {
     // Single traversal that produces the run plan: the runnable leaves plus the
     // counts (total non-manual cases as the progress denominator; manual + N/A
     // skipped). The sole source of truth for "what runs" — run() consumes this.
-    function collect(scope) {
+    function collect(scope: TreeNode): RunPlan {
         let total = 0;
         let manualSkipped = 0;
         let naCount = 0;
-        const leaves = [];
+        const leaves: TreeNode[] = [];
         leavesUnder(scope).forEach(function (leaf) {
-            const group = leaf.group;
-            if (!group.cases) {
+            const group = leaf.group!;
+            if (!('cases' in group)) {
                 naCount++; // naMessage leaf (or no cases)
                 return;
             }
@@ -65,7 +74,7 @@ export function createAutoRunner(deps) {
     // Runs a plan (from collect()) sequentially, calling onResult({ index, total,
     // path, name, ok, value }) as each case settles. Resolves with summary counts.
     // Never rejects.
-    function run(plan, onResult) {
+    function run(plan: RunPlan, onResult: (entry: ResultEntry) => void): Promise<AutoRunSummary> {
         const total = plan.total;
         const leaves = plan.leaves;
 
@@ -75,8 +84,8 @@ export function createAutoRunner(deps) {
 
         return new Promise(function (resolve) {
             let li = 0;
-            let prep = null;
-            let cases = null;
+            let prep: ReturnType<Runner['prepare']> | null = null;
+            let cases: TestCase<unknown>[] | null = null;
             let ci = 0;
 
             function finish() {
@@ -89,7 +98,7 @@ export function createAutoRunner(deps) {
                 });
             }
 
-            function record(leaf, testCase, ok, value) {
+            function record(leaf: TreeNode, testCase: TestCase<unknown>, ok: boolean, value: unknown) {
                 index++;
                 if (ok) {
                     passed++;
@@ -107,25 +116,27 @@ export function createAutoRunner(deps) {
                 const leaf = leaves[li];
                 if (prep === null) {
                     prep = runner.prepare(leaf);
-                    cases = leaf.group.cases.filter(function (testCase) {
+                    // Safe: collect() only ever pushes leaves whose group passed
+                    // 'cases' in group, i.e. a RunnableGroup.
+                    cases = (leaf.group as RunnableGroup).cases.filter(function (testCase) {
                         return !testCase.manual;
                     });
                     ci = 0;
                 }
-                if (ci >= cases.length) {
+                if (ci >= cases!.length) {
                     li++;
                     prep = null;
                     cases = null;
                     step();
                     return;
                 }
-                const testCase = cases[ci];
+                const testCase = cases![ci];
                 ci++;
-                if (prep.kind === 'setupFailure') {
-                    record(leaf, testCase, false, prep.error || 'setup failed (no object resolved)');
+                if (prep!.kind === 'setupFailure') {
+                    record(leaf, testCase, false, prep!.error || 'setup failed (no object resolved)');
                     step();
                 } else {
-                    runner.execute(testCase, prep.ctx).then(function (result) {
+                    runner.execute(testCase, (prep as { ctx: unknown }).ctx).then(function (result) {
                         record(leaf, testCase, result.ok, result.value);
                         step();
                     });

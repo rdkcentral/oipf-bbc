@@ -54,7 +54,7 @@ The library patches `document.getElementById` so that elements with the recognis
   vb.bindToCurrentChannel();
 
   const channels = vb.getChannelConfig().channelList;
-  const lang     = cfg.configuration.preferedAudioLanguage;
+  const lang     = cfg.configuration.preferredAudioLanguage;
 </script>
 ```
 
@@ -208,13 +208,13 @@ Accessed via the `configuration` property:
 
 ```javascript
 const cfg = oipfObjectFactory.createConfigurationObject();
-const { preferedAudioLanguage, countryId, subtitlesEnabled } = cfg.configuration;
+const { preferredAudioLanguage, countryId, subtitlesEnabled } = cfg.configuration;
 ```
 
 | Property | Type | Description |
 |---|---|---|
-| `preferedAudioLanguage` | `string` | ISO 639-2 preferred audio language code |
-| `preferedSubtitleLanguage` | `string` | ISO 639-2 preferred subtitle language code |
+| `preferredAudioLanguage` | `string` | ISO 639-2 preferred audio language code |
+| `preferredSubtitleLanguage` | `string` | ISO 639-2 preferred subtitle language code |
 | `countryId` | `string` | ISO 3166-1 alpha-3 country code (e.g. `"GBR"`, `"BEL"`) |
 | `subtitlesEnabled` | `boolean` | Whether subtitles are enabled |
 | `audioDescriptionEnabled` | `boolean` | Whether audio description is enabled |

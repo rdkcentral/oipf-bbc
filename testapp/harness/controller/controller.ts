@@ -19,7 +19,40 @@
  * pane, the drill-down level stack, and the reload-pending flag. Views own their
  * own cursors (menu focus, result row/data); the model (tree, runner) is DOM-free.
  */
-export function createController(deps) {
+import type { InitEnv, TestCase, TreeNode } from 'harness/types';
+import type { Tree } from 'harness/model/tree';
+import type { Runner } from 'harness/model/runner';
+import type { AutoRunner } from 'harness/model/autorun';
+import type { LogView } from 'harness/view/log';
+import type { MenuView } from 'harness/view/menuView';
+import type { ResultView } from 'harness/view/resultView';
+import type { PopupView } from 'harness/view/popupView';
+
+export interface Controller {
+    init: (env: InitEnv) => void;
+    fatal: (message: string) => void;
+    activate: (child: TreeNode) => void;
+}
+
+export interface ControllerDeps {
+    tree: Tree;
+    runner: Runner;
+    autoRunner: AutoRunner;
+    logView: LogView;
+    menuView: MenuView;
+    resultView: ResultView;
+    popupView: PopupView;
+}
+
+type Pane = 'menu' | 'results' | 'popup';
+type KeyAction = 'down' | 'up' | 'select' | 'right' | 'left' | 'back';
+
+interface Level {
+    node: TreeNode;
+    savedFocus: number;
+}
+
+export function createController(deps: ControllerDeps): Controller {
     const tree = deps.tree;
     const runner = deps.runner;
     const autoRunner = deps.autoRunner;
@@ -29,7 +62,7 @@ export function createController(deps) {
     const popupView = deps.popupView;
 
     // Map raw key codes to semantic actions in one place
-    const KEY_ACTIONS = {
+    const KEY_ACTIONS: Record<number, KeyAction> = {
         40: 'down',
         38: 'up',
         13: 'select',
@@ -40,10 +73,10 @@ export function createController(deps) {
         461: 'back'
     };
 
-    let pane = 'menu'; // 'menu' | 'results' | 'popup'
-    let levels = []; // drill-down stack of { node, savedFocus }; last = current
+    let pane: Pane = 'menu';
+    let levels: Level[] = []; // drill-down stack of { node, savedFocus }; last = current
 
-    function setStatus(text) {
+    function setStatus(text: string) {
         const el = document.getElementById('appStatus');
         if (el) {
             el.textContent = text;
@@ -61,10 +94,11 @@ export function createController(deps) {
     }
 
     // Drill into a branch, start an autorun, or run a leaf (key-select and click).
-    function activate(child) {
+    function activate(child: TreeNode): void {
         if (tree.isLeaf(child)) {
-            if (child.group.autorun) {
-                startAutorun(child.group.autorun, child.label);
+            const group = child.group!;
+            if ('autorun' in group) {
+                startAutorun(group.autorun, child.label);
             } else {
                 runLeaf(child);
             }
@@ -83,7 +117,7 @@ export function createController(deps) {
         }
     }
 
-    function handleMenuKey(action) {
+    function handleMenuKey(action: KeyAction) {
         if (action === 'down') {
             menuView.focusDown();
         } else if (action === 'up') {
@@ -101,14 +135,14 @@ export function createController(deps) {
 
     // ---- results side ----------------------------------------------------
 
-    function runCase(rowCtl, testCase, ctx) {
+    function runCase(rowCtl: { markRunning: () => void; settle: (ok: boolean, value?: unknown) => void }, testCase: TestCase<unknown>, ctx: unknown) {
         rowCtl.markRunning();
         runner.execute(testCase, ctx).then(function (result) {
             rowCtl.settle(result.ok, result.value);
         });
     }
 
-    function runLeaf(node) {
+    function runLeaf(node: TreeNode) {
         pane = 'results';
         menuView.setGhosted(true);
         resultView.setActive(true);
@@ -148,7 +182,7 @@ export function createController(deps) {
 
     // Runs every non-manual case under a scope subtree, streaming results into a
     // modal popup. The run can't be cancelled (Back is inert until it completes).
-    function startAutorun(scope, label) {
+    function startAutorun(scope: TreeNode, label: string) {
         pane = 'popup';
         const plan = autoRunner.collect(scope); // one traversal; the denominator + run plan
         popupView.open(label, plan.total);
@@ -161,7 +195,7 @@ export function createController(deps) {
             });
     }
 
-    function handlePopupKey(action) {
+    function handlePopupKey(action: KeyAction) {
         if (action === 'down') {
             popupView.scroll(1);
         } else if (action === 'up') {
@@ -175,7 +209,7 @@ export function createController(deps) {
         }
     }
 
-    function handleResultKey(action) {
+    function handleResultKey(action: KeyAction) {
         if (resultView.isInData()) {
             // Scrolling within the focused result's data block.
             if (action === 'down') {
@@ -198,7 +232,7 @@ export function createController(deps) {
         }
     }
 
-    function onKeyDown(e) {
+    function onKeyDown(e: KeyboardEvent) {
         const action = KEY_ACTIONS[e.keyCode || e.which];
         if (!action) {
             return;
@@ -215,7 +249,7 @@ export function createController(deps) {
 
     // ---- lifecycle -------------------------------------------------------
 
-    function init(env) {
+    function init(env: InitEnv): void {
         logView.captureConsole();
         pane = 'menu';
         // All test files have registered by now; add the "» Run all tests" entry.
@@ -224,9 +258,9 @@ export function createController(deps) {
         renderMenu();
 
         document.addEventListener('keydown', onKeyDown);
-        document.getElementById('resultsScroll').addEventListener('scroll', resultView.updateHints);
-        document.getElementById('menuScroll').addEventListener('scroll', menuView.updateHints);
-        document.getElementById('popupScroll').addEventListener('scroll', popupView.updateHints);
+        document.getElementById('resultsScroll')!.addEventListener('scroll', resultView.updateHints);
+        document.getElementById('menuScroll')!.addEventListener('scroll', menuView.updateHints);
+        document.getElementById('popupScroll')!.addEventListener('scroll', popupView.updateHints);
         window.addEventListener('resize', function () {
             resultView.updateHints();
             menuView.updateHints();
@@ -242,8 +276,8 @@ export function createController(deps) {
         setStatus('mode: ' + (env ? env.mode : 'unknown') + '  |  onesdk.VERSION: ' + version);
     }
 
-    function fatal(message) {
-        // Only reached from loader.js before init() runs (the library never
+    function fatal(message: string): void {
+        // Only reached from loader.ts before init() runs (the library never
         // resolved), so the results list is still empty.
         setStatus(message);
         resultView.showFatal(message);

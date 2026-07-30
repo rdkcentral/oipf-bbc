@@ -22,41 +22,16 @@
  * and DOM accessors fail to instantiate (rendered as a setup error), while the
  * bbc facade resolves but its Firebolt-backed calls reject (rendered per case).
  */
-import { harness } from 'harness/harness.js';
+import { harness } from 'harness/harness';
+import { ChannelSchema, OipfCollectionShapeSchema, PlayStateSchema, VideoBroadcastSchema, parseOrThrow } from 'harness/schemas';
 
-const METHODS = ['getChannelConfig', 'bindToCurrentChannel', 'setChannel', 'getComponents', 'selectComponent', 'stop'];
+// null/undefined are legitimate here: no channel bound yet (e.g. before the
+// first successful bind/tune), or bindToCurrentChannel() couldn't map the
+// host's current channel into the channel list.
+const ChannelOrUnboundSchema = ChannelSchema.nullable().optional();
+const ComponentsOrUnavailableSchema = OipfCollectionShapeSchema.nullable().optional();
 
-// OIPF play states (see the VideoBroadcast spec): 0 UNREALIZED, 1 CONNECTING,
-// 2 PRESENTING, 3 STOPPED. Not exposed as globals to the test app, so mirrored here.
-const VALID_PLAY_STATES = [0, 1, 2, 3];
-
-function isArrayLike(value) {
-    return !!value && typeof value.item === 'function' && typeof value.length === 'number';
-}
-
-function assertValidChannel(channel) {
-    // null/undefined are legitimate: no channel bound yet (e.g. before the first
-    // successful bind/tune), or bindToCurrentChannel() couldn't map the host's
-    // current channel into the channel list. Only validate shape when a channel
-    // object is actually present, so these expected cases don't read as failures.
-    if (channel === null || channel === undefined) {
-        return;
-    }
-
-    if (typeof channel !== 'object') {
-        throw new Error('expected channel to be null, undefined, or an object, got: ' + typeof channel);
-    }
-    if (typeof channel.ccid !== 'string') {
-        throw new Error('channel is missing a string ccid: ' + JSON.stringify(channel));
-    }
-}
-function assertValidPlayState(playState) {
-    if (VALID_PLAY_STATES.indexOf(playState) === -1) {
-        throw new Error('expected playState to be one of ' + VALID_PLAY_STATES.join(', ') + ', got: ' + playState);
-    }
-}
-
-harness.register({
+harness.register<VideoBroadcast>({
     path: [harness.INTERFACE, 'Video Broadcast'],
     accessors: {
         bbc: function () {
@@ -65,7 +40,7 @@ harness.register({
         factory: function () {
             return oipfObjectFactory.createVideoBroadcastObject();
         },
-        dom: harness.domObjectAccessor('video/broadcast', 'ta-video-broadcast')
+        dom: harness.domObjectAccessor<VideoBroadcast>('video/broadcast', 'ta-video-broadcast')
     },
     cases: [
         {
@@ -74,12 +49,7 @@ harness.register({
                 if (!vb) {
                     throw new Error('object not available (accessor returned null)');
                 }
-                const missing = METHODS.filter(function (m) {
-                    return typeof vb[m] !== 'function';
-                });
-                if (missing.length) {
-                    throw new Error('missing methods: ' + missing.join(', '));
-                }
+                parseOrThrow(VideoBroadcastSchema, vb, 'VideoBroadcast');
                 return 'all expected methods present';
             }
         },
@@ -90,9 +60,7 @@ harness.register({
                     if (!config) {
                         throw new Error('getChannelConfig() returned a falsy value');
                     }
-                    if (!isArrayLike(config.channelList)) {
-                        throw new Error('getChannelConfig().channelList is not array-like (missing length/item()): ' + JSON.stringify(config.channelList));
-                    }
+                    parseOrThrow(OipfCollectionShapeSchema, config.channelList, 'getChannelConfig().channelList');
                     return { channelCount: config.channelList.length };
                 });
             }
@@ -101,7 +69,7 @@ harness.register({
             name: 'currentChannel (getter)',
             run: function (vb) {
                 const channel = vb.currentChannel;
-                assertValidChannel(channel);
+                parseOrThrow(ChannelOrUnboundSchema, channel, 'currentChannel');
                 return { currentChannel: channel };
             }
         },
@@ -109,7 +77,7 @@ harness.register({
             name: 'playState (getter)',
             run: function (vb) {
                 const playState = vb.playState;
-                assertValidPlayState(playState);
+                parseOrThrow(PlayStateSchema, playState, 'playState');
                 return { playState: playState };
             }
         },
@@ -117,9 +85,7 @@ harness.register({
             name: 'getComponents()',
             run: function (vb) {
                 return Promise.resolve(vb.getComponents()).then(function (components) {
-                    if (components !== null && components !== undefined && !isArrayLike(components)) {
-                        throw new Error('getComponents() is neither null/undefined nor array-like (missing length/item()): ' + JSON.stringify(components));
-                    }
+                    parseOrThrow(ComponentsOrUnavailableSchema, components, 'getComponents()');
                     return { components: components };
                 });
             }
@@ -149,16 +115,16 @@ harness.register({
             run: function (vb) {
                 return Promise.resolve(vb.bindToCurrentChannel())
                     .then(function (boundChannel) {
-                        assertValidChannel(boundChannel);
-                        assertValidPlayState(vb.playState);
+                        parseOrThrow(ChannelOrUnboundSchema, boundChannel, 'bindToCurrentChannel()');
+                        parseOrThrow(PlayStateSchema, vb.playState, 'playState');
                         harness.log('bindToCurrentChannel resolved; channel=' + (boundChannel && boundChannel.ccid) + '; playState=' + vb.playState);
                         return Promise.resolve(vb.stop());
                     })
                     .then(function () {
                         const currentChannel = vb.currentChannel;
                         const playState = vb.playState;
-                        assertValidChannel(currentChannel);
-                        assertValidPlayState(playState);
+                        parseOrThrow(ChannelOrUnboundSchema, currentChannel, 'currentChannel');
+                        parseOrThrow(PlayStateSchema, playState, 'playState');
                         return { currentChannel: currentChannel, playState: playState };
                     });
             }
