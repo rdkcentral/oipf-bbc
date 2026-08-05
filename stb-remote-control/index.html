@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RDK STB Remote Control</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel-2: #1c2330;
+    --border: #2d333b;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #2f81f7;
+    --accent-2: #1f6feb;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --err: #f85149;
+    --rc: #202531;
+    --rc-btn: #2b3242;
+    --rc-btn-hover: #3a4252;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; white-space: nowrap; }
+  .conn { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  input, select {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 9px;
+    font-size: 13px;
+    outline: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  input.small { width: 190px; }
+  input.tiny { width: 110px; }
+  button {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background .12s, border-color .12s;
+  }
+  button:hover { background: #262d3a; border-color: #3d4551; }
+  button.primary { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
+  button.primary:hover { background: var(--accent); }
+  button.danger { background: transparent; border-color: var(--err); color: var(--err); }
+  button.danger:hover { background: var(--err); color: #fff; }
+  button.warn { background: transparent; border-color: var(--warn); color: var(--warn); }
+  button.warn:hover { background: var(--warn); color: #111; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); display: inline-block; }
+  .dot.ok { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+  .dot.err { background: var(--err); }
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    grid-template-areas: "apps remote" "log remote";
+    gap: 18px;
+    padding: 18px 20px;
+    align-items: start;
+  }
+  .panel.apps { grid-area: apps; }
+  .panel.log-panel { grid-area: log; }
+  .panel.remote-panel { grid-area: remote; }
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: 1fr; grid-template-areas: "apps" "remote" "log"; }
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .panel h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); margin: 0 0 12px; font-weight: 600;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  tr:last-child td { border-bottom: none; }
+  .appid { font-weight: 600; }
+  .sub { color: var(--muted); font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; border: 1px solid transparent; white-space: nowrap;
+  }
+  .badge.active   { background: rgba(63,185,80,.15); color: var(--ok); border-color: rgba(63,185,80,.4); }
+  .badge.running  { background: rgba(47,129,247,.15); color: var(--accent); border-color: rgba(47,129,247,.4); }
+  .badge.paused,.badge.suspended,.badge.hibernated { background: rgba(210,153,34,.15); color: var(--warn); border-color: rgba(210,153,34,.4); }
+  .badge.loading,.badge.initializing,.badge.terminating { background: rgba(139,148,158,.15); color: var(--muted); border-color: var(--border); }
+  .badge.unloaded,.badge.unknown,.badge.installed { background: rgba(139,148,158,.1); color: var(--muted); border-color: var(--border); }
+  .badge.focused { background: rgba(47,129,247,.2); color: #fff; border-color: var(--accent); }
+  .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .row-actions button { padding: 4px 9px; font-size: 12px; }
+  .hint { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
+  .empty { color: var(--muted); text-align: center; padding: 24px; font-style: italic; }
+
+  /* Remote control */
+  .remote {
+    position: relative;
+    background: linear-gradient(180deg,#252b38,#191d26);
+    border: 1px solid #333b4a;
+    border-radius: 28px;
+    padding: 22px 18px 26px;
+    width: 250px;
+    margin: 0 auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05);
+    user-select: none;
+  }
+  .rc-power {
+    position: absolute;
+    top: 14px; right: 16px;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--err);
+    color: var(--err);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    padding: 0;
+  }
+  .rc-power:hover { background: var(--err); color: #fff; }
+  .rc-brand { text-align: center; color: var(--muted); font-size: 11px; letter-spacing: .12em; margin-bottom: 14px; text-transform: uppercase; }
+  .rc-row { display: flex; justify-content: center; gap: 12px; margin: 10px 0; }
+  .rc-btn {
+    background: var(--rc-btn);
+    border: 1px solid #3a4252;
+    color: var(--text);
+    border-radius: 10px;
+    min-width: 46px; height: 40px;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    cursor: pointer; font-size: 15px; font-weight: 600;
+    transition: transform .05s, background .12s, box-shadow .12s;
+    box-shadow: 0 2px 0 rgba(0,0,0,.3);
+  }
+  .rc-btn:hover { background: #38414f; }
+  .rc-btn:active, .rc-btn.flash { transform: translateY(1px); background: var(--accent-2); box-shadow: 0 0 10px var(--accent); }
+  .rc-btn .kc { font-size: 9px; color: var(--muted); font-weight: 400; margin-top: -2px; }
+
+  /* D-pad */
+  .dpad { position: relative; width: 168px; height: 168px; margin: 16px auto; }
+  .dpad .rc-btn { position: absolute; width: 54px; height: 54px; border-radius: 12px; }
+  .dpad .up    { top: 0; left: 57px; }
+  .dpad .down  { bottom: 0; left: 57px; }
+  .dpad .left  { left: 0; top: 57px; }
+  .dpad .right { right: 0; top: 57px; }
+  .dpad .ok {
+    top: 57px; left: 57px; width: 54px; height: 54px; border-radius: 50%;
+    background: var(--accent-2); border-color: var(--accent); font-size: 13px; color:#fff;
+  }
+  .dpad .ok:hover { background: var(--accent); }
+
+  /* color buttons */
+  .colors { display: flex; justify-content: center; gap: 10px; margin: 14px 0; }
+  .cbtn { width: 42px; height: 18px; border-radius: 5px; cursor: pointer; border: 1px solid rgba(0,0,0,.4); box-shadow: 0 2px 4px rgba(0,0,0,.4); transition: transform .05s; }
+  .cbtn:active, .cbtn.flash { transform: translateY(1px) scale(.96); }
+  .cbtn.red { background: #e5484d; } .cbtn.green { background: #46a758; }
+  .cbtn.yellow { background: #f0c000; } .cbtn.blue { background: #3e63dd; }
+
+  /* number pad */
+  .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px auto 0; width: 190px; }
+  .numpad .rc-btn { width: 100%; }
+
+  .focus-target { margin-bottom: 12px; }
+  .focus-target label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing:.05em; margin-bottom: 5px; }
+  .focus-target select { width: 100%; }
+  .focus-note { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  /* log */
+  .log { max-height: 260px; overflow-y: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .log-entry { padding: 5px 8px; border-bottom: 1px solid var(--border); white-space: pre-wrap; word-break: break-word; }
+  .log-entry .arrow { color: var(--accent); }
+  .log-entry.err .arrow, .log-entry.err { color: var(--err); }
+  .log-entry .t { color: var(--muted); }
+  .toolbar { display:flex; gap:8px; align-items:center; }
+  .kbd-hint { font-size:11px; color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>📺 RDK STB Remote Control</h1>
+  <div class="conn">
+    <span class="dot" id="statusDot" title="connection status"></span>
+    <label class="kbd-hint">Host</label>
+    <input class="small" id="host" value="127.0.0.1" placeholder="ip (e.g. 192.168.1.50)" />
+    <label class="kbd-hint">Port</label>
+    <input class="tiny" id="port" value="9998" placeholder="9998" />
+    <label class="kbd-hint">Token</label>
+    <input class="tiny" id="token" placeholder="(optional)" />
+    <button class="primary" id="connectBtn">Connect</button>
+    <button id="refreshBtn">Refresh</button>
+    <label class="kbd-hint"><input type="checkbox" id="autoRefresh" style="width:auto;"> auto</label>
+  </div>
+  <div class="conn" style="margin-left:auto;">
+    <label class="kbd-hint">Package plugin</label>
+    <select id="pkgMgrSelect" title="Which plugin to use for listPackages/uninstall">
+      <option value="org.rdk.PackageManagerRDKEMS">PackageManagerRDKEMS</option>
+      <option value="org.rdk.AppPackageManager">AppPackageManager</option>
+    </select>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- LEFT: applications -->
+  <div class="panel apps">
+    <h2>Applications <span class="kbd-hint" id="appCount"></span></h2>
+    <div id="appsContainer">
+      <div class="empty">Enter the STB host and click “Connect”.</div>
+    </div>
+    <p class="hint">
+      Data from <code>org.rdk.AppManager.getInstalledApps</code> + <code>getLoadedApps</code> and
+      <code><span id="pkgMgrName1"></span>.listPackages</code> (bolt package version).
+      Actions call <code>launchApp</code>, <code>closeApp</code>, <code>terminateApp</code>, <code>killApp</code>,
+      <code>org.rdk.RDKWindowManager.setFocus</code> and <code><span id="pkgMgrName2"></span>.uninstall</code>.
+      Pick the package plugin from the dropdown in the top right.
+    </p>
+  </div>
+
+  <!-- RIGHT: remote -->
+  <div class="panel remote-panel">
+    <h2>Remote Control</h2>
+    <div class="focus-target">
+      <label>Inject / focus target (client · appInstanceId)</label>
+      <select id="focusTarget"><option value="">— no running apps —</option></select>
+      <div class="toolbar" style="margin-top:8px;">
+        <button id="setFocusBtn">Set Focus</button>
+        <button id="removeFocusBtn">Remove Focus</button>
+      </div>
+      <div class="focus-note">
+        Keys are injected to the app that currently has focus (<code>injectKey</code> is global).
+        Set focus first, then press buttons on the remote.
+      </div>
+    </div>
+
+    <div class="remote">
+      <button class="rc-power" id="rebootBtn" style="display:none;" title="org.rdk.PowerManager.reboot">⏻</button>
+      <div class="rc-brand">RDK Remote</div>
+
+      <div class="rc-row">
+        <div class="rc-btn" data-key="home">🏠<span class="kc">home</span></div>
+        <div class="rc-btn" data-key="back">↩<span class="kc">back</span></div>
+        <div class="rc-btn" data-key="esc">⎋<span class="kc">esc</span></div>
+      </div>
+
+      <div class="dpad">
+        <div class="rc-btn up"    data-key="up">▲</div>
+        <div class="rc-btn left"  data-key="left">◀</div>
+        <div class="rc-btn ok"    data-key="ok">OK</div>
+        <div class="rc-btn right" data-key="right">▶</div>
+        <div class="rc-btn down"  data-key="down">▼</div>
+      </div>
+
+      <div class="colors">
+        <div class="cbtn red"    data-key="red"    title="Red"></div>
+        <div class="cbtn green"  data-key="green"  title="Green"></div>
+        <div class="cbtn yellow" data-key="yellow" title="Yellow"></div>
+        <div class="cbtn blue"   data-key="blue"   title="Blue"></div>
+      </div>
+
+      <div class="numpad">
+        <div class="rc-btn" data-key="1">1</div>
+        <div class="rc-btn" data-key="2">2</div>
+        <div class="rc-btn" data-key="3">3</div>
+        <div class="rc-btn" data-key="4">4</div>
+        <div class="rc-btn" data-key="5">5</div>
+        <div class="rc-btn" data-key="6">6</div>
+        <div class="rc-btn" data-key="7">7</div>
+        <div class="rc-btn" data-key="8">8</div>
+        <div class="rc-btn" data-key="9">9</div>
+        <div class="rc-btn" data-key="back2">⌫</div>
+        <div class="rc-btn" data-key="0">0</div>
+        <div class="rc-btn" data-key="ok">OK</div>
+      </div>
+    </div>
+    <p class="focus-note" style="text-align:center;">Tip: you can also use your keyboard (arrows, 0-9, Enter, Backspace).</p>
+  </div>
+
+  <!-- LEFT (below applications): JSON-RPC log -->
+  <div class="panel log-panel">
+    <h2>JSON-RPC Log <button id="clearLog" style="padding:2px 8px;font-size:11px;">clear</button></h2>
+    <div class="log" id="log"><div class="empty">Requests and responses appear here.</div></div>
+  </div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ *
+ *  RDK key codes.
+ *  Arrows / OK / numbers use the standard DOM/X11 key codes that RDK
+ *  window manager consumes; the colour keys use the CEA/OIPF codes.
+ *  If your platform uses a different map, just edit the numbers below.
+ * ------------------------------------------------------------------ */
+const KEYMAP = {
+  up: 38, down: 40, left: 37, right: 39,
+  ok: 13,           // Select / Enter
+  back: 8,          // Backspace / Back
+  esc: 27,          // Escape — some apps listen for this instead of Back
+  back2: 8,         // numpad backspace = Back
+  home: 36,         // Home
+  0: 48, 1: 49, 2: 50, 3: 51, 4: 52,
+  5: 53, 6: 54, 7: 55, 8: 56, 9: 57,
+  red: 403, green: 404, yellow: 405, blue: 406
+};
+
+const APPMGR = 'org.rdk.AppManager';
+const WM     = 'org.rdk.RDKWindowManager';
+const PWRMGR = 'org.rdk.PowerManager';
+// Older firmware exposes package management under org.rdk.PackageManagerRDKEMS;
+// newer firmware renamed it to org.rdk.AppPackageManager. Picked via the
+// dropdown in the header; PackageManagerRDKEMS is the default.
+let PKGMGR = 'org.rdk.PackageManagerRDKEMS';
+
+let reqId = 1;
+let autoTimer = null;
+let connected = false;
+
+const $ = (id) => document.getElementById(id);
+const hostEl = $('host'), portEl = $('port'), tokenEl = $('token');
+$('pkgMgrSelect').value = PKGMGR;
+$('pkgMgrName1').textContent = PKGMGR;
+$('pkgMgrName2').textContent = PKGMGR;
+
+/* --------------------------- JSON-RPC --------------------------- *
+ * Calls go to this page's own origin (the local proxy in server.js),
+ * which forwards them to the STB server-side. That avoids browser
+ * CORS entirely, since CORS only restricts browser-initiated
+ * cross-origin requests, not the proxy's outbound HTTP call.
+ * ------------------------------------------------------------------ */
+async function rpc(method, params) {
+  const ip = hostEl.value.trim().replace(/^https?:\/\//,'').replace(/\/+$/,'').replace(/:\d+$/,'');
+  const port = portEl.value.trim() || '9998';
+  const host = `${ip}:${port}`;
+  const token = tokenEl.value.trim();
+  const body = { jsonrpc: '2.0', id: reqId++, method, host };
+  if (params !== undefined) body.params = params;
+  if (token) body.token = token;
+
+  logEntry('req', method, params);
+  try {
+    const res = await fetch('/rpc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = text; }
+    if (data && data.error) {
+      logEntry('err', method, data.error);
+      setStatus(true); // reachable, but call errored
+      throw new Error(data.error.message || JSON.stringify(data.error));
+    }
+    logEntry('res', method, data && ('result' in data) ? data.result : data);
+    setStatus(true);
+    return data ? data.result : undefined;
+  } catch (e) {
+    if (e.message && /Failed to fetch|NetworkError|load failed/i.test(e.message)) {
+      setStatus(false);
+      logEntry('err', method, 'Could not reach the local proxy or the device: ' + e.message);
+    }
+    throw e;
+  }
+}
+
+function setStatus(ok) {
+  connected = ok;
+  $('statusDot').className = 'dot ' + (ok ? 'ok' : 'err');
+  $('rebootBtn').style.display = ok ? '' : 'none';
+  const btn = $('connectBtn');
+  btn.textContent = ok ? 'Disconnect' : 'Connect';
+  btn.classList.toggle('primary', !ok);
+  btn.classList.toggle('warn', ok);
+}
+
+function disconnect() {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+  $('autoRefresh').checked = false;
+  setStatus(false);
+  $('appsContainer').innerHTML = '<div class="empty">Enter the STB host and click “Connect”.</div>';
+  $('appCount').textContent = '';
+  renderFocusTargets([]);
+}
+
+/* ------------------------------ Log ----------------------------- */
+function logEntry(kind, method, payload) {
+  const log = $('log');
+  if (log.querySelector('.empty')) log.innerHTML = '';
+  const el = document.createElement('div');
+  el.className = 'log-entry' + (kind === 'err' ? ' err' : '');
+  const arrow = kind === 'req' ? '→' : kind === 'res' ? '←' : '✕';
+  const ts = new Date().toLocaleTimeString();
+  const pl = payload === undefined ? '' : ' ' + (typeof payload === 'string' ? payload : JSON.stringify(payload));
+  el.innerHTML = `<span class="t">${ts}</span> <span class="arrow">${arrow}</span> <b>${method}</b>${escapeHtml(pl)}`;
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+}
+function escapeHtml(s){ return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+/* -------------------------- App loading ------------------------- */
+// getLoadedApps: result may be an array OR {apps:[...]}
+function extractLoaded(result) {
+  if (Array.isArray(result)) return result;
+  if (result && Array.isArray(result.apps)) return result.apps;
+  if (result && typeof result.apps === 'string') { try { return JSON.parse(result.apps); } catch {} }
+  return [];
+}
+// getInstalledApps: result.apps is an opaque JSON string (or array)
+function extractInstalled(result) {
+  let raw = result;
+  if (result && result.apps !== undefined) raw = result.apps;
+  if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch { return []; } }
+  if (Array.isArray(raw)) return raw;
+  if (raw && Array.isArray(raw.apps)) return raw.apps;
+  return [];
+}
+// listPackages: result may be an array OR {packages:[...]} (possibly a JSON string)
+function extractPackages(result) {
+  let raw = result;
+  if (result && result.packages !== undefined) raw = result.packages;
+  if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch { return []; } }
+  if (Array.isArray(raw)) return raw;
+  if (raw && Array.isArray(raw.packages)) return raw.packages;
+  return [];
+}
+
+function stateLabel(s) {
+  return String(s || '').replace(/^APP_STATE_/, '');
+}
+function badgeClass(s) {
+  return stateLabel(s).toLowerCase() || 'unknown';
+}
+
+async function refresh() {
+  const [installedRes, loadedRes, packagesRes] = await Promise.allSettled([
+    rpc(`${APPMGR}.getInstalledApps`),
+    rpc(`${APPMGR}.getLoadedApps`),
+    rpc(`${PKGMGR}.listPackages`)
+  ]);
+
+  const installed = installedRes.status === 'fulfilled' ? extractInstalled(installedRes.value) : [];
+  const loaded    = loadedRes.status === 'fulfilled' ? extractLoaded(loadedRes.value) : [];
+  const packages  = packagesRes.status === 'fulfilled' ? extractPackages(packagesRes.value) : [];
+
+  // index loaded by appId
+  const loadedByApp = {};
+  loaded.forEach(a => { if (a && a.appId) (loadedByApp[a.appId] = loadedByApp[a.appId] || []).push(a); });
+
+  // index package (bolt) versions by packageId — this is the source of truth for
+  // "current version", since getInstalledApps doesn't always report it accurately
+  const versionByPkg = {};
+  packages.forEach(p => {
+    const pkgId = p && (p.packageId || p.appId || p.id);
+    if (!pkgId) return;
+    versionByPkg[pkgId] = p.version || p.versions || '';
+  });
+
+  // merge: every installed app + any loaded app not in the installed list
+  const rows = [];
+  const seen = new Set();
+  installed.forEach(app => {
+    const appId = app.appId || app.id || app.name || (typeof app === 'string' ? app : '');
+    if (!appId) return;
+    seen.add(appId);
+    const version = versionByPkg[appId] || app.version || app.versions || '';
+    const insts = loadedByApp[appId] || [null];
+    insts.forEach(inst => rows.push({ appId, type: app.type || (inst && inst.type) || '', version, inst }));
+  });
+  loaded.forEach(inst => {
+    if (inst && inst.appId && !seen.has(inst.appId)) {
+      rows.push({ appId: inst.appId, type: inst.type || '', version: versionByPkg[inst.appId] || '', inst });
+    }
+  });
+
+  renderApps(rows);
+  renderFocusTargets(loaded);
+  if (installedRes.status === 'rejected' && loadedRes.status === 'rejected') {
+    $('appsContainer').innerHTML = '<div class="empty">Could not reach the device. Check host, token and network connectivity.</div>';
+  }
+}
+
+function renderApps(rows) {
+  const c = $('appsContainer');
+  $('appCount').textContent = rows.length ? `${rows.length} shown` : '';
+  if (!rows.length) { c.innerHTML = '<div class="empty">No applications reported.</div>'; return; }
+
+  const t = document.createElement('table');
+  t.innerHTML = `<thead><tr>
+    <th>Application</th><th>Version</th><th>Instance</th><th>Status</th><th>Actions</th>
+  </tr></thead>`;
+  const tb = document.createElement('tbody');
+
+  const uninstallShown = new Set();
+  rows.forEach(r => {
+    const inst = r.inst;
+    const running = !!inst;
+    const state = running ? stateLabel(inst.lifecycleState) : 'INSTALLED';
+    const tr = document.createElement('tr');
+
+    const tdApp = document.createElement('td');
+    tdApp.innerHTML = `<div class="appid">${escapeHtml(r.appId)}</div>
+      <div class="sub">${escapeHtml(r.type || '')}</div>`;
+    tr.appendChild(tdApp);
+
+    const tdVersion = document.createElement('td');
+    tdVersion.innerHTML = `<span class="sub">${escapeHtml(r.version || '—')}</span>`;
+    tr.appendChild(tdVersion);
+
+    const tdInst = document.createElement('td');
+    tdInst.innerHTML = running
+      ? `<span class="sub">${escapeHtml(inst.appInstanceId || '-')}</span>`
+      : `<span class="sub">—</span>`;
+    tr.appendChild(tdInst);
+
+    const tdStatus = document.createElement('td');
+    tdStatus.innerHTML = `<span class="badge ${badgeClass(state)}">${escapeHtml(state)}</span>`;
+    tr.appendChild(tdStatus);
+
+    const tdAct = document.createElement('td');
+    const act = document.createElement('div');
+    act.className = 'row-actions';
+    act.appendChild(mkBtn('Launch', 'primary', () => launchApp(r.appId)));
+    if (running) {
+      const client = inst.appInstanceId || r.appId;
+      act.appendChild(mkBtn('Focus', '', () => setFocus(client)));
+      act.appendChild(mkBtn('Close', '', () => call(`${APPMGR}.closeApp`, { appId: r.appId })));
+      act.appendChild(mkBtn('Terminate', '', () => call(`${APPMGR}.terminateApp`, { appId: r.appId })));
+      act.appendChild(mkBtn('Kill', '', () => call(`${APPMGR}.killApp`, { appId: r.appId })));
+    }
+    if (!uninstallShown.has(r.appId)) {
+      uninstallShown.add(r.appId);
+      act.appendChild(mkBtn('Uninstall', 'danger', () => uninstallApp(r.appId, r.version)));
+    }
+    tdAct.appendChild(act);
+    tr.appendChild(tdAct);
+
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+  c.innerHTML = '';
+  c.appendChild(t);
+}
+
+function mkBtn(label, cls, fn) {
+  const b = document.createElement('button');
+  b.textContent = label; if (cls) b.className = cls;
+  b.onclick = fn;
+  return b;
+}
+
+function renderFocusTargets(loaded) {
+  const sel = $('focusTarget');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  const runnable = loaded.filter(a => a && (a.appInstanceId || a.appId));
+  if (!runnable.length) {
+    sel.innerHTML = '<option value="">— no running apps —</option>';
+    return;
+  }
+  runnable.forEach(a => {
+    const client = a.appInstanceId || a.appId;
+    const o = document.createElement('option');
+    o.value = client;
+    o.textContent = `${a.appId} · ${client}`;
+    sel.appendChild(o);
+  });
+  if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+}
+
+/* --------------------------- Actions ---------------------------- */
+async function call(method, params, okMsg) {
+  try { await rpc(method, params); setTimeout(refresh, 500); }
+  catch (e) { /* already logged */ }
+}
+function launchApp(appId) { call(`${APPMGR}.launchApp`, { appId, intent: '', launchArgs: '' }); }
+function uninstallApp(appId, version) {
+  if (!version) { alert(`Cannot uninstall "${appId}": no package version was reported by ${PKGMGR}.listPackages.`); return; }
+  if (!confirm(`Uninstall ${appId} (v${version})? This cannot be undone.`)) return;
+  call(`${PKGMGR}.uninstall`, { packageId: appId, version });
+}
+function setFocus(client) {
+  $('focusTarget').value = client;
+  rpc(`${WM}.setFocus`, { client }).catch(()=>{});
+}
+
+$('setFocusBtn').onclick = () => {
+  const client = $('focusTarget').value;
+  if (!client) return;
+  rpc(`${WM}.setFocus`, { client }).catch(()=>{});
+};
+// "Remove focus": clear focus by focusing an empty client (no app keeps RC focus).
+$('removeFocusBtn').onclick = () => {
+  rpc(`${WM}.setFocus`, { client: '' }).catch(()=>{});
+};
+
+/* --------------------------- Key inject ------------------------- */
+async function injectKey(name) {
+  const code = KEYMAP[name];
+  if (code === undefined) return;
+  try { await rpc(`${WM}.injectKey`, { keyCode: code, modifiers: '' }); }
+  catch (e) { /* logged */ }
+}
+
+function flash(el) { if (!el) return; el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 120); }
+
+document.querySelectorAll('[data-key]').forEach(el => {
+  el.addEventListener('click', () => { flash(el); injectKey(el.dataset.key); });
+});
+
+// physical keyboard → remote
+const KB = {
+  ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right',
+  Enter:'ok', Backspace:'back', Escape:'esc', Home:'home',
+  Digit0:'0',Digit1:'1',Digit2:'2',Digit3:'3',Digit4:'4',
+  Digit5:'5',Digit6:'6',Digit7:'7',Digit8:'8',Digit9:'9'
+};
+document.addEventListener('keydown', (e) => {
+  if (['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  const name = KB[e.code];
+  if (!name) return;
+  e.preventDefault();
+  const btn = document.querySelector(`.remote [data-key="${name}"]`);
+  flash(btn);
+  injectKey(name);
+});
+
+/* --------------------------- Wiring ----------------------------- */
+$('rebootBtn').onclick = () => {
+  if (!confirm('Reboot the device now? It will become unreachable until it comes back up.')) return;
+  rpc(`${PWRMGR}.reboot`, { rebootRequestor: '', rebootReasonCustom: '', rebootReasonOther: '' }).catch(()=>{});
+};
+$('pkgMgrSelect').onchange = (e) => {
+  PKGMGR = e.target.value;
+  $('pkgMgrName1').textContent = PKGMGR;
+  $('pkgMgrName2').textContent = PKGMGR;
+  if (connected) refresh().catch(()=>{});
+};
+$('connectBtn').onclick = () => { if (connected) disconnect(); else refresh().catch(()=>{}); };
+$('refreshBtn').onclick = () => refresh().catch(()=>{});
+$('clearLog').onclick = () => { $('log').innerHTML = '<div class="empty">Requests and responses appear here.</div>'; };
+$('autoRefresh').onchange = (e) => {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+  if (e.target.checked) autoTimer = setInterval(() => refresh().catch(()=>{}), 4000);
+};
+[hostEl, portEl].forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter') refresh().catch(()=>{}); }));
+</script>
+</body>
+</html>
