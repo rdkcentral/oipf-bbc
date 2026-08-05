@@ -1,6 +1,6 @@
 # STB Remote Control
 
-A small web UI tool geneated with Claude for controlling an RDK set-top box over its
+A small web UI tool generated with Claude for controlling an RDK set-top box over its
 Thunder JSON-RPC endpoint (`:9998/jsonrpc`). It lets you:
 
 1. See installed/loaded applications, their bolt package version and

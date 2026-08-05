@@ -7,3 +7,4 @@ dist
 *.sublime-project
 .DS_Store
 testapp/dist/
+.vscode
