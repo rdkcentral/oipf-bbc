@@ -618,11 +618,14 @@ function setFocus(client) {
   rpc(`${WM}.setFocus`, { client }).catch(()=>{});
 }
 
-$('setFocusBtn').onclick = () => {
+function focusSelectedApp() {
   const client = $('focusTarget').value;
   if (!client) return;
   rpc(`${WM}.setFocus`, { client }).catch(()=>{});
-};
+}
+$('focusTarget').onchange = focusSelectedApp;
+$('setFocusBtn').onclick = focusSelectedApp;
+
 // "Remove focus": clear focus by focusing an empty client (no app keeps RC focus).
 $('removeFocusBtn').onclick = () => {
   rpc(`${WM}.setFocus`, { client: '' }).catch(()=>{});
