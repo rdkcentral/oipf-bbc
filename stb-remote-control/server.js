@@ -32,38 +32,66 @@ const path = require("path");
 const PORT = Number(process.argv[2]) || 8777;
 const STATIC_DIR = __dirname;
 
+function mimeTypeFor(ext) {
+	switch (ext) {
+		case ".js":
+			return "text/javascript";
+		case ".css":
+			return "text/css";
+		case ".json":
+			return "application/json";
+		case ".svg":
+			return "image/svg+xml";
+		case ".png":
+			return "image/png";
+		case ".ico":
+			return "image/x-icon";
+		default:
+			return "text/html";
+	}
+}
+
 function serveStatic(req, res) {
 	const urlPath = req.url.split("?")[0];
-	const reqPath = urlPath === "/" ? "/index.html" : urlPath;
+	const reqPath = urlPath.endsWith("/") ? urlPath + "index.html" : urlPath;
+
 	const filePath = path.join(
 		STATIC_DIR,
 		path.normalize(reqPath).replace(/^(\.\.[/\\])+/, ""),
 	);
+
 	fs.readFile(filePath, (err, data) => {
 		if (err) {
 			res.writeHead(404);
 			res.end("Not found");
 			return;
 		}
-		const ext = path.extname(filePath);
-		const type =
-			ext === ".js"
-				? "text/javascript"
-				: ext === ".css"
-					? "text/css"
-					: "text/html";
-		res.writeHead(200, { "Content-Type": type + "; charset=utf-8" });
+		const type = mimeTypeFor(path.extname(filePath));
+		const contentType = type.startsWith("text/") ? `${type}; charset=utf-8` : type;
+		res.writeHead(200, { "Content-Type": contentType });
 		res.end(data);
 	});
 }
 
 function forwardRpc(req, res) {
 	let body = "";
+	let aborted = false;
+
 	req.on("data", (chunk) => {
+		if (aborted) return;
 		body += chunk;
-		if (body.length > 1e6) req.destroy();
+		if (body.length > 1e6) {
+			aborted = true;
+
+			res.writeHead(413);
+			res.end("Payload too large");
+			req.destroy();
+		}
 	});
+
 	req.on("end", () => {
+		if (aborted) return;
+
 		let payload;
 		try {
 			payload = JSON.parse(body);
@@ -81,7 +109,7 @@ function forwardRpc(req, res) {
 		}
 
 		const headers = { "Content-Type": "application/json" };
-		if (token) headers["Authorization"] = "Bearer " + token;
+		if (token) headers["Authorization"] = `Bearer ${token}`;
 
 		const data = JSON.stringify(rpcBody);
 		const upstream = http.request(
@@ -103,14 +131,16 @@ function forwardRpc(req, res) {
 				});
 			},
 		);
+
 		upstream.on("error", (e) => {
 			res.writeHead(502, { "Content-Type": "application/json" });
 			res.end(
 				JSON.stringify({
-					error: { message: "Proxy could not reach device: " + e.message },
+					error: { message: `Proxy could not reach device: ${e.message}` },
 				}),
 			);
 		});
+
 		upstream.write(data);
 		upstream.end();
 	});
@@ -120,7 +150,9 @@ http
 	.createServer((req, res) => {
 		if (req.method === "POST" && req.url === "/rpc")
 			return forwardRpc(req, res);
-		if (req.method === "GET") return serveStatic(req, res);
+		if (req.method === "GET")
+			return serveStatic(req, res);
+
 		res.writeHead(405);
 		res.end("Method not allowed");
 	})
