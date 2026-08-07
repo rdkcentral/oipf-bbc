@@ -473,3 +473,58 @@ body {
     white-space: pre-wrap;
     word-break: break-word;
 }
+
+/* ---- Exit confirmation dialog ----------------------------------------- */
+
+.confirm {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+}
+
+.confirm.open {
+    display: flex;
+}
+
+.confirmPanel {
+    width: 480px;
+    max-width: 90%;
+    background: #161b23;
+    border: 2px solid #2c3440;
+    border-radius: 8px;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+}
+
+.confirmMessage {
+    font-size: 24px;
+    text-align: center;
+}
+
+.confirmButtons {
+    display: flex;
+    gap: 20px;
+}
+
+.confirmButton {
+    padding: 14px 36px;
+    background: #1f2730;
+    color: #e6e9ef;
+    font-size: 20px;
+    border: 3px solid #2c3440;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.confirmButton.focused {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #ffffff;
+}
