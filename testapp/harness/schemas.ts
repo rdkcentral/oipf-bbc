@@ -49,7 +49,7 @@ export const PrimaryDisplaySchema = z.object({
 export type PrimaryDisplay = z.infer<typeof PrimaryDisplaySchema>;
 
 export const DisplayInfoSchema = z.object({
-    edid: z.string()
+    edid: z.instanceof(Uint8Array)
 });
 export type DisplayInfo = z.infer<typeof DisplayInfoSchema>;
 
