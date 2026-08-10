@@ -27,11 +27,13 @@ import type { LogView } from 'harness/view/log';
 import type { MenuView } from 'harness/view/menuView';
 import type { ResultView } from 'harness/view/resultView';
 import type { PopupView } from 'harness/view/popupView';
+import type { ConfirmView } from 'harness/view/confirmView';
 
 export interface Controller {
     init: (env: InitEnv) => void;
     fatal: (message: string) => void;
     activate: (child: TreeNode) => void;
+    confirmExit: (accepted: boolean) => void;
 }
 
 export interface ControllerDeps {
@@ -42,9 +44,10 @@ export interface ControllerDeps {
     menuView: MenuView;
     resultView: ResultView;
     popupView: PopupView;
+    confirmView: ConfirmView;
 }
 
-type Pane = 'menu' | 'results' | 'popup';
+type Pane = 'menu' | 'results' | 'popup' | 'confirm';
 type KeyAction = 'down' | 'up' | 'select' | 'right' | 'left' | 'back';
 
 interface Level {
@@ -60,6 +63,7 @@ export function createController(deps: ControllerDeps): Controller {
     const menuView = deps.menuView;
     const resultView = deps.resultView;
     const popupView = deps.popupView;
+    const confirmView = deps.confirmView;
 
     // Map raw key codes to semantic actions in one place
     const KEY_ACTIONS: Record<number, KeyAction> = {
@@ -125,11 +129,39 @@ export function createController(deps: ControllerDeps): Controller {
         } else if (action === 'select' || action === 'right') {
             selectFocused();
         } else if (action === 'back' || action === 'left') {
-            // Left or Back pops a drill-down level; no-op at the root.
+            // Left or Back pops a drill-down level. At the root there's nothing to
+            // pop; Left stays a no-op there, but Back offers to exit the app.
             if (levels.length > 1) {
                 levels.pop();
                 renderMenu();
+            } else if (action === 'back') {
+                openExitConfirm();
             }
+        }
+    }
+
+    // ---- exit confirmation -------------------------------------------------
+
+    function openExitConfirm(): void {
+        pane = 'confirm';
+        confirmView.open('Exit the application?');
+    }
+
+    function confirmExit(accepted: boolean): void {
+        confirmView.close();
+        pane = 'menu';
+        if (accepted) {
+            window.close();
+        }
+    }
+
+    function handleConfirmKey(action: KeyAction) {
+        if (action === 'left' || action === 'right' || action === 'up' || action === 'down') {
+            confirmView.toggleFocus();
+        } else if (action === 'select') {
+            confirmExit(confirmView.isYesFocused());
+        } else if (action === 'back') {
+            confirmExit(false);
         }
     }
 
@@ -240,6 +272,8 @@ export function createController(deps: ControllerDeps): Controller {
         e.preventDefault();
         if (pane === 'popup') {
             handlePopupKey(action);
+        } else if (pane === 'confirm') {
+            handleConfirmKey(action);
         } else if (pane === 'menu') {
             handleMenuKey(action);
         } else {
@@ -287,6 +321,7 @@ export function createController(deps: ControllerDeps): Controller {
     return {
         init: init,
         fatal: fatal,
-        activate: activate
+        activate: activate,
+        confirmExit: confirmExit
     };
 }
