@@ -13,7 +13,8 @@
         "serve:testapp": "webpack serve --mode=development --config-name testapp",
         "validate:testapp": "node scripts/validate-testapp.js",
         "build:testapp": "webpack --mode=production --config-name testapp",
-        "build:testapp:dev": "webpack --mode=production --config-name testapp --env withLib"
+        "build:testapp:dev": "webpack --mode=production --config-name testapp --env withLib",
+		"serve:remotecontrol": "node stb-remote-control/server.js"
     },
     "author": "Infosys",
     "license": "Apache-2.0",
