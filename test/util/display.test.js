@@ -21,7 +21,8 @@
  * that talk to Firebolt over JSON-RPC via util/websockets.
  *   - each helper sends the right `method` to the Firebolt target
  *   - the response is returned to the caller unmodified for size/resolutions
- *     /colorimetry; getDisplayInfo wraps the EDID string into an object
+ *     /colorimetry; getDisplayInfo decodes the base64 EDID string into a
+ *     Uint8Array and wraps it into an object
  *   - rejections from the websocket layer are rewrapped as OipfError with the
  *     code documented in the module header
  */
@@ -135,21 +136,21 @@ describe('util/display — Firebolt helpers', () => {
     });
 
     describe('getDisplayInfo', () => {
-        it('calls Display.edid and wraps the base64 string into { edid }', async () => {
-            const { display, sendCalls } = loadDisplay({ sendResult: 'AP///////wBMLTAL...' });
+        it('calls Display.edid and decodes the base64 string into { edid: Uint8Array }', async () => {
+            const { display, sendCalls } = loadDisplay({ sendResult: 'AP8AVGVzdA==' });
 
             const result = await display.getDisplayInfo();
 
             expect(sendCalls).to.deep.equal([{ target: FIREBOLT_TARGET, method: 'Display.edid' }]);
-            expect(result).to.deep.equal({ edid: 'AP///////wBMLTAL...' });
+            expect(result).to.deep.equal({ edid: new Uint8Array([0, 255, 0, 84, 101, 115, 116]) });
         });
 
-        it('passes through an empty string when no display is connected', async () => {
+        it('passes through an empty Uint8Array when no display is connected', async () => {
             const { display } = loadDisplay({ sendResult: '' });
 
             const result = await display.getDisplayInfo();
 
-            expect(result).to.deep.equal({ edid: '' });
+            expect(result).to.deep.equal({ edid: new Uint8Array(0) });
         });
 
         it('rewraps a websocket rejection as OipfError 401', async () => {

@@ -225,7 +225,7 @@ const { preferredAudioLanguage, countryId, subtitlesEnabled } = cfg.configuratio
 
 | Symbol | Type | Description |
 |---|---|---|
-| `getDisplayInfo()` | `Function → Promise<{edid: string}>` | Resolves with `{ edid }` (Base64-encoded EDID string) |
+| `getDisplayInfo()` | `Function → Promise<{edid: []]}>` | Resolves with `{ edid }` (a uint8 array) |
 | `VERSION` | `string` | Library version string (includes git hash) |
 
 ### `getPrimaryDisplay()`
