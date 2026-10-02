@@ -17,20 +17,18 @@
 /**
  * Unit tests for lib/util/display.js
  *
- * Focus: the new Firebolt-backed helpers (and the rewritten getDisplayInfo)
- * that talk to Firebolt over JSON-RPC via util/websockets.
- *   - each helper sends the right `method` to the Firebolt target
+ * Focus: the Firebolt-backed helpers that talk to the native
+ * FireboltServiceManager client via util/firebolt.
+ *   - each helper calls the right method on the right Firebolt module
  *   - the response is returned to the caller unmodified for size/resolutions
  *     /colorimetry; getDisplayInfo decodes the base64 EDID string into a
  *     Uint8Array and wraps it into an object
- *   - rejections from the websocket layer are rewrapped as OipfError with the
+ *   - rejections from the Firebolt client are rewrapped as OipfError with the
  *     code documented in the module header
  */
 
 const { expect } = require('chai');
 const proxyquire = require('proxyquire').noCallThru();
-
-const FIREBOLT_TARGET = 'ws://localhost:9998/jsonrpc';
 
 class FakeOipfError extends Error {
     constructor(code, message, extra) {
@@ -41,40 +39,36 @@ class FakeOipfError extends Error {
     }
 }
 
-function loadDisplay({ sendResult, sendError } = {}) {
-    const sendCalls = [];
-    const send = params => {
-        sendCalls.push(params);
-        if (sendError) return Promise.reject(sendError);
-        return Promise.resolve(sendResult);
-    };
-
+function loadDisplay({ firebolt, firebolticError } = {}) {
     delete require.cache[require.resolve('util/display')];
     const display = proxyquire('util/display', {
-        'util/websockets': { send },
-        'util/websockets-legacy': { send: () => Promise.reject(new Error('legacy send not expected in these tests')) },
-        'datamodel/oipfError': FakeOipfError,
-        'constants/target_urls': { __esModule: true, default: { Firebolt: FIREBOLT_TARGET } }
+        'util/firebolt': {
+            getFirebolt: () => (firebolticError ? Promise.reject(firebolticError) : Promise.resolve(firebolt))
+        },
+        'datamodel/oipfError': FakeOipfError
     });
 
-    return { display, sendCalls };
+    return { display };
 }
 
 describe('util/display — Firebolt helpers', () => {
     describe('getDisplaySize', () => {
-        it('calls Display.size on the Firebolt target and returns the payload', async () => {
-            const { display, sendCalls } = loadDisplay({ sendResult: { width: 123, height: 71 } });
+        it('calls Display.size on the Firebolt client and returns the payload', async () => {
+            const sizeCalls = [];
+            const { display } = loadDisplay({
+                firebolt: { Display: { size: () => { sizeCalls.push(true); return Promise.resolve({ width: 123, height: 71 }); } } }
+            });
 
             const result = await display.getDisplaySize();
 
-            expect(sendCalls).to.deep.equal([{ target: FIREBOLT_TARGET, method: 'Display.size' }]);
+            expect(sizeCalls).to.have.length(1);
             expect(result).to.deep.equal({ width: 123, height: 71 });
         });
 
-        it('rewraps a websocket rejection as OipfError 406', async () => {
+        it('rewraps a Firebolt rejection as OipfError 406', async () => {
             const cause = new Error('host down');
             cause.printable = 'host down (printable)';
-            const { display } = loadDisplay({ sendError: cause });
+            const { display } = loadDisplay({ firebolticError: cause });
 
             try {
                 await display.getDisplaySize();
@@ -89,18 +83,17 @@ describe('util/display — Firebolt helpers', () => {
 
     describe('getDisplayVideoResolutions', () => {
         it('calls Display.videoResolutions and returns the array verbatim', async () => {
-            const { display, sendCalls } = loadDisplay({
-                sendResult: ['720p50', '1080p60', '2160p60']
+            const { display } = loadDisplay({
+                firebolt: { Display: { videoResolutions: () => Promise.resolve(['720p50', '1080p60', '2160p60']) } }
             });
 
             const result = await display.getDisplayVideoResolutions();
 
-            expect(sendCalls).to.deep.equal([{ target: FIREBOLT_TARGET, method: 'Display.videoResolutions' }]);
             expect(result).to.deep.equal(['720p50', '1080p60', '2160p60']);
         });
 
-        it('rewraps a websocket rejection as OipfError 407', async () => {
-            const { display } = loadDisplay({ sendError: new Error('host down') });
+        it('rewraps a Firebolt rejection as OipfError 407', async () => {
+            const { display } = loadDisplay({ firebolticError: new Error('host down') });
 
             try {
                 await display.getDisplayVideoResolutions();
@@ -113,18 +106,17 @@ describe('util/display — Firebolt helpers', () => {
 
     describe('getDisplayColorimetry', () => {
         it('calls Display.colorimetry and returns the array verbatim', async () => {
-            const { display, sendCalls } = loadDisplay({
-                sendResult: ['bt709', 'bt2020']
+            const { display } = loadDisplay({
+                firebolt: { Display: { colorimetry: () => Promise.resolve(['bt709', 'bt2020']) } }
             });
 
             const result = await display.getDisplayColorimetry();
 
-            expect(sendCalls).to.deep.equal([{ target: FIREBOLT_TARGET, method: 'Display.colorimetry' }]);
             expect(result).to.deep.equal(['bt709', 'bt2020']);
         });
 
-        it('rewraps a websocket rejection as OipfError 408', async () => {
-            const { display } = loadDisplay({ sendError: new Error('host down') });
+        it('rewraps a Firebolt rejection as OipfError 408', async () => {
+            const { display } = loadDisplay({ firebolticError: new Error('host down') });
 
             try {
                 await display.getDisplayColorimetry();
@@ -137,24 +129,27 @@ describe('util/display — Firebolt helpers', () => {
 
     describe('getDisplayInfo', () => {
         it('calls Display.edid and decodes the base64 string into { edid: Uint8Array }', async () => {
-            const { display, sendCalls } = loadDisplay({ sendResult: 'AP8AVGVzdA==' });
+            const { display } = loadDisplay({
+                firebolt: { Display: { edid: () => Promise.resolve('AP8AVGVzdA==') } }
+            });
 
             const result = await display.getDisplayInfo();
 
-            expect(sendCalls).to.deep.equal([{ target: FIREBOLT_TARGET, method: 'Display.edid' }]);
             expect(result).to.deep.equal({ edid: new Uint8Array([0, 255, 0, 84, 101, 115, 116]) });
         });
 
         it('passes through an empty Uint8Array when no display is connected', async () => {
-            const { display } = loadDisplay({ sendResult: '' });
+            const { display } = loadDisplay({
+                firebolt: { Display: { edid: () => Promise.resolve('') } }
+            });
 
             const result = await display.getDisplayInfo();
 
             expect(result).to.deep.equal({ edid: new Uint8Array(0) });
         });
 
-        it('rewraps a websocket rejection as OipfError 401', async () => {
-            const { display } = loadDisplay({ sendError: new Error('host down') });
+        it('rewraps a Firebolt rejection as OipfError 401', async () => {
+            const { display } = loadDisplay({ firebolticError: new Error('host down') });
 
             try {
                 await display.getDisplayInfo();

@@ -17,29 +17,28 @@
 /**
  * Unit tests for lib/util/navigate.js — Firebolt-backed helpers.
  *
- * Scope: exitToApp, which calls Firebolt Actions.start with a launch intent and
- * a handlerAppId.
+ * Scope: exitToApp, which calls Firebolt Actions.start on the native
+ * Firebolt client with a launch intent and a handlerAppId.
  *
- * Both util/websockets and constants/target_urls are stubbed so the test
- * controls the wire and the URL.
+ * util/firebolt is stubbed so the test controls what Actions.start sees and
+ * returns.
  */
 
 const { expect } = require('chai');
 const proxyquire = require('proxyquire').noCallThru();
 
-const FIREBOLT_URL = 'ws://test-firebolt/jsonrpc';
-
-function loadNavigate({ sendImpl } = {}) {
-    const sendCalls = [];
-    const send = args => {
-        sendCalls.push(args);
-        return sendImpl ? sendImpl(args) : Promise.resolve(null);
+function loadNavigate({ startImpl } = {}) {
+    const startCalls = [];
+    const start = params => {
+        startCalls.push(params);
+        return startImpl ? startImpl(params) : Promise.resolve(null);
     };
 
     delete require.cache[require.resolve('util/navigate')];
     const navigate = proxyquire('util/navigate', {
-        'util/websockets': { send },
-        'constants/target_urls': { __esModule: true, default: { Firebolt: FIREBOLT_URL } },
+        'util/firebolt': {
+            getFirebolt: () => Promise.resolve({ Actions: { start } })
+        },
         'datamodel/oipfError': {
             __esModule: true,
             default: class OipfError extends Error {
@@ -53,37 +52,51 @@ function loadNavigate({ sendImpl } = {}) {
         }
     });
 
-    return { navigate, sendCalls };
+    return { navigate, startCalls };
 }
 
 describe('util/navigate — exitToApp', () => {
-    it('calls Firebolt Actions.start with a launch intent and the handlerAppId', async () => {
-        const { navigate, sendCalls } = loadNavigate();
+    it('calls Firebolt Actions.start with a launch intent object and the handlerAppId', async () => {
+        const { navigate, startCalls } = loadNavigate();
 
         await navigate.exitToApp('uk.co.bbc.iplayer');
 
-        expect(sendCalls).to.have.length(1);
-        expect(sendCalls[0].target).to.equal(FIREBOLT_URL);
-        expect(sendCalls[0].method).to.equal('Actions.start');
-        expect(sendCalls[0].params.handlerAppId).to.equal('uk.co.bbc.iplayer');
-        expect(JSON.parse(sendCalls[0].params.intent)).to.deep.equal({
+        expect(startCalls).to.have.length(1);
+        expect(startCalls[0].handlerAppId).to.equal('uk.co.bbc.iplayer');
+        // intent must be a plain object per the generated StartParams contract.
+        expect(startCalls[0].intent).to.deep.equal({
             action: 'launch',
             context: { source: 'oipf-bbc' }
         });
     });
 
-    it('passes additional parameters through as the third argument', async () => {
-        const { navigate, sendCalls } = loadNavigate();
+    it('does not send an additionalParameters field', async () => {
+        const { navigate, startCalls } = loadNavigate();
 
         await navigate.exitToApp('uk.co.bbc.iplayer', { foo: 'bar' });
 
-        // NOTE: argument name is a placeholder pending platform confirmation.
-        expect(sendCalls[0].params.additionalParameters).to.deep.equal({ foo: 'bar' });
+        expect(startCalls[0]).to.not.have.property('additionalParameters');
+        expect(Object.keys(startCalls[0]).sort()).to.deep.equal(['handlerAppId', 'intent']);
+    });
+
+    it('warns when called with params, since they are currently dropped', async () => {
+        const { navigate } = loadNavigate();
+        const warnings = [];
+        const originalWarn = console.warn;
+        console.warn = (...args) => warnings.push(args);
+
+        try {
+            await navigate.exitToApp('uk.co.bbc.iplayer', { foo: 'bar' });
+        } finally {
+            console.warn = originalWarn;
+        }
+
+        expect(warnings).to.have.length(1);
     });
 
     it('rejects with an OipfError when the Firebolt call fails', async () => {
         const { navigate } = loadNavigate({
-            sendImpl: () => Promise.reject(new Error('firebolt unreachable'))
+            startImpl: () => Promise.reject(new Error('firebolt unreachable'))
         });
 
         let caught;
