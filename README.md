@@ -6,7 +6,7 @@ A JavaScript library that implements the [OIPF](https://www.oipf.tv/) (Open IPTV
 
 The library bridges two APIs:
 
-- **Firebolt** — the underlying RDK platform API (WebSocket JSON-RPC)
+- **Firebolt** — the underlying RDK platform API, accessed via the native `FireboltServiceManager` client injected by the WPE WebKit extension
 - **OIPF** — the standard DOM object model expected by broadcast HbbTV/OIPF applications
 
 It intercepts `document.getElementById` calls for known OIPF object types and returns fully initialised OIPF-compliant objects backed by Firebolt. Applications can also create objects explicitly via the `oipfObjectFactory` or access services directly through the `bbc` and `onesdk` namespaces.
