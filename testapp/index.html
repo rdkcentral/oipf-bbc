@@ -71,6 +71,17 @@
             </div>
         </div>
 
+        <!-- Exit confirmation (modal overlay, hidden until Back is pressed with no history left). -->
+        <div id="exitConfirm" class="confirm" aria-hidden="true">
+            <div class="confirmPanel">
+                <div id="exitConfirmMessage" class="confirmMessage"></div>
+                <div class="confirmButtons">
+                    <div id="exitConfirmYes" class="confirmButton">Yes</div>
+                    <div id="exitConfirmNo" class="confirmButton">No</div>
+                </div>
+            </div>
+        </div>
+
         <!--
             No manual <script> list here: webpack builds src/index.js (which pulls in
             harness.css, every test module in registration order, and loader.js last)

@@ -33,6 +33,7 @@ import { createLogView } from 'harness/view/log';
 import { createMenuView } from 'harness/view/menuView';
 import { createResultView } from 'harness/view/resultView';
 import { createPopupView } from 'harness/view/popupView';
+import { createConfirmView } from 'harness/view/confirmView';
 import { createController, type Controller } from 'harness/controller/controller';
 import type { Accessor, Harness } from 'harness/types';
 
@@ -50,6 +51,14 @@ const menuView = createMenuView({
         controller.activate(child);
     }
 });
+const confirmView = createConfirmView({
+    onConfirm: function () {
+        controller.confirmExit(true);
+    },
+    onCancel: function () {
+        controller.confirmExit(false);
+    }
+});
 controller = createController({
     tree: tree,
     runner: runner,
@@ -57,7 +66,8 @@ controller = createController({
     logView: logView,
     menuView: menuView,
     resultView: resultView,
-    popupView: popupView
+    popupView: popupView,
+    confirmView: confirmView
 });
 
 // Test-authoring helper: returns an accessor (a setup function) that creates a
