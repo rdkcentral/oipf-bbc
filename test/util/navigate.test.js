@@ -70,28 +70,24 @@ describe('util/navigate — exitToApp', () => {
         });
     });
 
-    it('does not send an additionalParameters field', async () => {
+    it('places params in intent.data when provided', async () => {
         const { navigate, startCalls } = loadNavigate();
 
         await navigate.exitToApp('uk.co.bbc.iplayer', { foo: 'bar' });
 
-        expect(startCalls[0]).to.not.have.property('additionalParameters');
-        expect(Object.keys(startCalls[0]).sort()).to.deep.equal(['handlerAppId', 'intent']);
+        expect(startCalls[0].intent).to.deep.equal({
+            action: 'launch',
+            context: { source: 'oipf-bbc' },
+            data: { foo: 'bar' }
+        });
     });
 
-    it('warns when called with params, since they are currently dropped', async () => {
-        const { navigate } = loadNavigate();
-        const warnings = [];
-        const originalWarn = console.warn;
-        console.warn = (...args) => warnings.push(args);
+    it('omits intent.data when no params are given', async () => {
+        const { navigate, startCalls } = loadNavigate();
 
-        try {
-            await navigate.exitToApp('uk.co.bbc.iplayer', { foo: 'bar' });
-        } finally {
-            console.warn = originalWarn;
-        }
+        await navigate.exitToApp('uk.co.bbc.iplayer');
 
-        expect(warnings).to.have.length(1);
+        expect(startCalls[0].intent).to.not.have.property('data');
     });
 
     it('rejects with an OipfError when the Firebolt call fails', async () => {
