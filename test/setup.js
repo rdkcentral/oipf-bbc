@@ -18,13 +18,9 @@
  * Global test setup for mocha. Polyfills the browser globals that the source
  * code under test references at module-load or call time.
  */
-const { WebSocket } = require('mock-socket');
 
-// websockets.js uses `new WebSocket(url)` and the WebSocket.CLOSING/CLOSED constants.
-global.WebSocket = WebSocket;
-
-// websockets.js resolves the live Firebolt URL from window.__firebolt.endpoint
-// at connection time. Provide a default global; individual tests can override
-// window.__firebolt.endpoint to point at their mock server.
+// Several lib/oipf modules reference `window` at module-load time (e.g.
+// VideoBroadcast.js reads window.innerWidth/innerHeight), so a default must
+// exist before any lib module is required. Individual tests override
+// properties (including window.FireboltServiceManager) as needed.
 global.window = global.window || {};
-global.window.__firebolt = { endpoint: 'ws://127.0.0.1:9998/jsonrpc' };

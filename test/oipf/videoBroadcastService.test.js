@@ -75,10 +75,6 @@ function loadService(overrides = {}) {
         getChannelById: id => Promise.resolve({ ccid: 'ccid:' + id, name: 'host-' + id }),
         listenForTuneCompletion: () => new Promise(() => {}), //hangs forever unless overridden
         tuneToChannelByNumber: () => Promise.resolve(),
-        getAudioComponents: () => Promise.resolve([]),
-        getSubtitleComponents: () => Promise.resolve([]),
-        setAudioComponent: () => {},
-        setSubtitleComponent: () => {},
         listenToChannelChange: () => {},
         unregisterChannelChange: () => {}
     }, overrides.broadcast || {});
@@ -106,7 +102,6 @@ function loadService(overrides = {}) {
         'util/broadcast': broadcast,
         'oipf/ChannelConfig': { __esModule: true, default: ChannelConfig },
         'oipf/AVComponentCollection': { __esModule: true, default: AVComponentCollection },
-        'oipf/AVComponent': { __esModule: true, fbComponent: Symbol('fbComponent') },
         'datamodel/oipfError': { __esModule: true, default: FakeOipfError }
     });
 
@@ -253,9 +248,7 @@ describe('oipf/videoBroadcastService', () => {
             const { service } = loadService({
                 broadcast: {
                     getChannels: () => Promise.resolve([ch]),
-                    getCurrentChannelId: () => Promise.resolve('1001'),
-                    getAudioComponents: () => Promise.resolve([]),
-                    getSubtitleComponents: () => Promise.resolve([])
+                    getCurrentChannelId: () => Promise.resolve('1001')
                 }
             });
             await service.init();
@@ -345,9 +338,7 @@ describe('oipf/videoBroadcastService', () => {
                     getCurrentChannelId: () => Promise.resolve('1001'),
                     listenForTuneCompletion: () => Promise.resolve(),
                     tuneToChannelByNumber: () => Promise.resolve(),
-                    getChannelById: () => Promise.resolve(ch),
-                    getAudioComponents: () => Promise.resolve([]),
-                    getSubtitleComponents: () => Promise.resolve([])
+                    getChannelById: () => Promise.resolve(ch)
                 }
             });
             await service.init();
@@ -355,7 +346,7 @@ describe('oipf/videoBroadcastService', () => {
             service.attachView(view);
 
             service.setChannel(ch);
-            // Let the listenForTuneCompletion → fetchComponents → getCurrentChannelId → getChannelById chain settle.
+            // Let the listenForTuneCompletion → getCurrentChannelId → getChannelById chain settle.
             await flush();
             await flush();
             await flush();
@@ -531,43 +522,42 @@ describe('oipf/videoBroadcastService', () => {
         });
     });
 
-    describe('selectComponent', () => {
-        it('routes audio components to setAudioComponent and subtitle components to setSubtitleComponent', async () => {
-            const audioCalls = [];
-            const subtitleCalls = [];
-            const fbComponent = Symbol('fbComponent');
-
-            delete require.cache[require.resolve('oipf/videoBroadcastService')];
-            const service = proxyquire('oipf/videoBroadcastService', {
-                'util/broadcast': {
-                    getChannels: () => Promise.resolve([]),
-                    getCurrentChannelId: () => Promise.resolve(null),
-                    getChannelById: () => Promise.resolve(null),
-                    listenForTuneCompletion: () => new Promise(() => {}),
-                    tuneToChannelByNumber: () => Promise.resolve(),
-                    getAudioComponents: () => Promise.resolve([]),
-                    getSubtitleComponents: () => Promise.resolve([]),
-                    setAudioComponent: c => audioCalls.push(c),
-                    setSubtitleComponent: c => subtitleCalls.push(c),
-                    listenToChannelChange: () => {},
-                    unregisterChannelChange: () => {}
-                },
-                'oipf/ChannelConfig': { __esModule: true, default: function() { return { channelList: [] }; } },
-                'oipf/AVComponentCollection': { __esModule: true, default: function() {} },
-                'oipf/AVComponent': { __esModule: true, fbComponent },
-                'datamodel/oipfError': { __esModule: true, default: FakeOipfError }
-            });
-
+    describe('getComponents', () => {
+        it('returns a permanently empty collection for audio, subtitle, and all components', async () => {
+            const { service } = loadService();
             await service.init();
 
-            const audio = { type: COMPONENT_TYPE_AUDIO, [fbComponent]: 'audio-handle' };
-            const subtitle = { type: COMPONENT_TYPE_SUBTITLE, [fbComponent]: 'sub-handle' };
+            expect(service.getComponents(COMPONENT_TYPE_AUDIO)).to.deep.equal({
+                type: COMPONENT_TYPE_AUDIO,
+                items: [],
+                audio: undefined,
+                subtitle: undefined
+            });
+            expect(service.getComponents(COMPONENT_TYPE_SUBTITLE)).to.deep.equal({
+                type: COMPONENT_TYPE_SUBTITLE,
+                items: [],
+                audio: undefined,
+                subtitle: undefined
+            });
+            expect(service.getComponents()).to.deep.equal({
+                type: null,
+                items: null,
+                audio: service.getComponents(COMPONENT_TYPE_AUDIO),
+                subtitle: service.getComponents(COMPONENT_TYPE_SUBTITLE)
+            });
+        });
+    });
 
-            service.selectComponent(audio);
-            service.selectComponent(subtitle);
+    describe('selectComponent', () => {
+        it('is a no-op — Firebolt has no component selection API', async () => {
+            const { service } = loadService();
+            await service.init();
 
-            expect(audioCalls).to.deep.equal(['audio-handle']);
-            expect(subtitleCalls).to.deep.equal(['sub-handle']);
+            const audio = { type: COMPONENT_TYPE_AUDIO };
+            const subtitle = { type: COMPONENT_TYPE_SUBTITLE };
+
+            expect(() => service.selectComponent(audio)).to.not.throw();
+            expect(() => service.selectComponent(subtitle)).to.not.throw();
         });
     });
 });
