@@ -9,4 +9,3 @@ dist
 testapp/dist/
 .vscode
 docs/plans
-.commit-tests

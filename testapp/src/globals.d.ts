@@ -42,6 +42,7 @@ import type {
     Channel as ChannelType,
     ChannelConfig as ChannelConfigType,
     Configuration as ConfigurationType,
+    DeviceInformation as DeviceInformationType,
     DisplayInfo as DisplayInfoType,
     OipfObjectFactory as OipfObjectFactoryType,
     OneSdk as OneSdkType,
@@ -56,6 +57,7 @@ declare global {
     type VideoMode = VideoModeType;
     type PrimaryDisplay = PrimaryDisplayType;
     type DisplayInfo = DisplayInfoType;
+    type DeviceInformation = DeviceInformationType;
     type OneSdk = OneSdkType;
     type ChannelConfig = ChannelConfigType;
     type VideoBroadcast = VideoBroadcastType;

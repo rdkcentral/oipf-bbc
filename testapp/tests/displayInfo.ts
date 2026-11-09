@@ -20,7 +20,7 @@
  * rather than being expanded across bbc/Factory/DOM.
  */
 import { harness } from 'harness/harness';
-import { DisplayInfoSchema, PrimaryDisplaySchema, VersionSchema, parseOrThrow } from 'harness/schemas';
+import { DeviceInformationSchema, DisplayInfoSchema, PrimaryDisplaySchema, VersionSchema, parseOrThrow } from 'harness/schemas';
 
 harness.register({
     path: ['onesdk', 'Display Info'],
@@ -39,6 +39,15 @@ harness.register({
                 return Promise.resolve(onesdk.getDisplayInfo()).then(function (displayInfo) {
                     parseOrThrow(DisplayInfoSchema, displayInfo, 'getDisplayInfo()');
                     return { edid: displayInfo.edid };
+                });
+            }
+        },
+        {
+            name: 'onesdk.getDeviceInformation()',
+            run: function () {
+                return Promise.resolve(onesdk.getDeviceInformation()).then(function (info) {
+                    parseOrThrow(DeviceInformationSchema, info, 'getDeviceInformation()');
+                    return info;
                 });
             }
         },

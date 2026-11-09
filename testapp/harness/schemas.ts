@@ -53,11 +53,21 @@ export const DisplayInfoSchema = z.object({
 });
 export type DisplayInfo = z.infer<typeof DisplayInfoSchema>;
 
+export const DeviceInformationSchema = z.object({
+    middlewareVersion: z.string(),
+    country: z.string(),
+    firmwareVersion: z.string(),
+    deviceId: z.string(),
+    caSerialNumber: z.string()
+});
+export type DeviceInformation = z.infer<typeof DeviceInformationSchema>;
+
 export const VersionSchema = z.string().min(1);
 
 export const OneSdkSchema = z.object({
     VERSION: VersionSchema,
-    getDisplayInfo: z.function({ input: [], output: z.promise(DisplayInfoSchema) })
+    getDisplayInfo: z.function({ input: [], output: z.promise(DisplayInfoSchema) }),
+    getDeviceInformation: z.function({ input: [], output: z.promise(DeviceInformationSchema) })
 });
 export type OneSdk = z.infer<typeof OneSdkSchema>;
 
