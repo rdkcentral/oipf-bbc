@@ -129,6 +129,7 @@ echo "          Certificates ready at: $CERTS_DIR"
 echo "    [4.2] Creating testapp/bolt/dist directory structure ..."
 rm -rf "$BOLT_DIR"
 mkdir -p "$APP_SHARE_DIR"
+mkdir -p "$BOLT_DIR/tmp/package"
 echo "          Created : $APP_SHARE_DIR"
 
 # ── 4.3 Copy OIPF library files (dist/stb/*) ─────────────────────────────────
@@ -144,9 +145,17 @@ echo "          Done."
 echo "          Contents of $APP_SHARE_DIR:"
 ls -1 "$APP_SHARE_DIR" | sed 's/^/            /'
 
+# ── 4.4.1 Copy Package files (testapp/bolt/package/) ─────────────────────────────────
+echo "    [4.4.1] Copying Package (bolt/package) ..."
+cp -r /workspace/testapp/bolt/package/. "$BOLT_DIR/package/"
+echo "          Done."
+
+echo "          Contents of $BOLT_DIR:"
+ls -1 "$BOLT_DIR" | sed 's/^/            /'
+
 # ── 4.5 Create tarball of usr/ ───────────────────────────────────────────────
 echo "    [4.5] Creating tarball of usr/ ..."
-tar -czf "$TARBALL" -C "$BOLT_DIR" usr
+tar -czf "$TARBALL" -C "$BOLT_DIR" usr package
 echo "          Tarball: $TARBALL"
 
 # ── 4.6 Prepare versioned manifest ───────────────────────────────────────────

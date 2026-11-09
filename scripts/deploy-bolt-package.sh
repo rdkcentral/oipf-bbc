@@ -81,7 +81,7 @@ cmd_install() {
 {
   "jsonrpc": "2.0",
   "id": 500,
-  "method": "org.rdk.PackageManagerRDKEMS.install",
+  "method": "org.rdk.AppPackageManager.install",
   "params": {
     "packageId": "${APP_ID}",
     "version": "${VERSION}",
@@ -102,7 +102,7 @@ EOF
 {
   "jsonrpc": "2.0",
   "id": 501,
-  "method": "org.rdk.PackageManagerRDKEMS.listPackages"
+  "method": "org.rdk.AppPackageManager.listPackages"
 }
 EOF
 )
@@ -181,7 +181,7 @@ cmd_remove() {
 {
   "jsonrpc": "2.0",
   "id": 505,
-  "method": "org.rdk.PackageManagerRDKEMS.uninstall",
+  "method": "org.rdk.AppPackageManager.uninstall",
   "params": {
     "packageId": "${APP_ID}",
     "version": "${VERSION}"

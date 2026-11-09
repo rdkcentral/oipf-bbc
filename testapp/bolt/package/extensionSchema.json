@@ -1,0 +1,8 @@
+[
+  {
+    "name": "Device",
+    "methods": [
+      "information"
+    ]
+  }
+]
